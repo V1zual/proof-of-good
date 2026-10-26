@@ -1,0 +1,8 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27
+python-multipart>=0.0.9
+pillow>=10
+imagehash>=4.3
+python-telegram-bot[job-queue]>=21
+c2pa-python>=0.6

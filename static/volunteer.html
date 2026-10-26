@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proof of Good — volunteer portal</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/static/app.js"></script>
+<script>
+let camp = null, code = "";
+
+function login() {
+  $("#app").innerHTML = header("volunteer") + `
+  <section class="hero"><h1>Volunteer portal</h1><p>Claim a tranche: upload the receipt and a photo of the item in place. The AI auditor answers in about half a minute.</p></section>
+  <div class="card" style="max-width:480px">
+    <label>Campaign code</label><input id="code" placeholder="e.g. GEN-2026" value="${esc(code)}">
+    <p class="small muted">Demo codes: <span class="mono">GEN-2026</span>, <span class="mono">WARM-12</span>, <span class="mono">PAWS-80</span></p>
+    <button class="btn" id="go">Open my campaign</button><div id="err" class="small" style="color:var(--red);margin-top:8px"></div>
+  </div>`;
+  $("#go").onclick = async () => {
+    code = $("#code").value.trim().toUpperCase();
+    try { camp = await api("/api/volunteer/login", { method: "POST", body: JSON.stringify({ code }) }); portal(); }
+    catch (e) { $("#err").textContent = e.message; }
+  };
+  $("#code").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
+}
+
+function portal() {
+  const c = camp, open = c.tranches.filter((t) => ["waiting", "rejected", "review"].includes(t.status));
+  $("#app").innerHTML = header("volunteer") + `
+  <section class="hero" style="padding-bottom:6px"><div class="small muted">Volunteer ${esc(c.volunteer_name)} · <a href="/c/${c.id}">public page</a> · <a href="#" id="out">switch campaign</a></div>
+    <h1>${esc(c.title)}</h1></section>
+  <div class="two">
+    <div>
+      <div class="card">${bar(c.totals)}</div>
+      <div class="card" style="margin-top:18px"><h3>Tranches</h3>${c.tranches.map(trancheHtml).join("")}</div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Send proof</h3>
+        ${c.status !== "active" ? `<p class="muted">This campaign is ${c.status}.</p>` : open.length === 0 ? `<p class="muted">Every tranche is verified or paid. 🎉</p>` : `
+        <label>Tranche</label><select id="tr">${open.map((t) => `<option value="${t.id}">${esc(t.title)} — ${money(t.amount)}</option>`).join("")}</select>
+        <label>Receipt photo</label><input id="receipt" type="file" accept="image/*">
+        <label>Photo of the item in place</label><input id="photo" type="file" accept="image/*">
+        <p class="small muted">Original phone photos keep the camera date and place — they help the audit. Screenshots and downloaded pictures get caught.</p>
+        <button class="btn" id="send" style="margin-top:6px">Run the AI audit</button>
+        <div id="result" class="result"></div>`}
+      </div>
+      <div class="card" style="margin-top:18px"><h3>Simulate: volunteer vanished</h3>
+        <p class="small">For judges: closes the campaign as failed and <b>refunds every held donation</b> through PayPal.</p>
+        <button class="btn danger" id="fail">Refund all donors</button><div id="failres" class="small" style="margin-top:8px"></div></div>
+    </div>
+  </div>`;
+  $("#out").onclick = (e) => { e.preventDefault(); camp = null; login(); };
+  if ($("#send")) $("#send").onclick = sendProof;
+  $("#fail").onclick = async () => {
+    if (!confirm("Refund every held donation and close the campaign?")) return;
+    $("#failres").innerHTML = `<span class="spinner"></span>Refunding…`;
+    try { const r = await api(`/api/campaigns/${c.id}/fail`, { method: "POST", body: JSON.stringify({ code, reason: "volunteer did not deliver proof" }) });
+      $("#failres").textContent = `Refunded ${r.refunded.length} donation(s)${r.failed.length ? ", failed " + r.failed.length : ""}.`; refresh(); }
+    catch (e) { $("#failres").textContent = e.message; }
+  };
+}
+
+async function refresh() { camp = await api("/api/volunteer/login", { method: "POST", body: JSON.stringify({ code }) }); portal(); }
+
+async function sendProof() {
+  const tid = $("#tr").value, r = $("#receipt").files[0], p = $("#photo").files[0];
+  if (!r || !p) { $("#result").innerHTML = `<div class="note">Choose both images first.</div>`; return; }
+  const fd = new FormData(); fd.append("code", code); fd.append("receipt", r); fd.append("photo", p);
+  $("#send").disabled = true;
+  $("#result").innerHTML = `<p><span class="spinner"></span>Auditing: reading the receipt, converting the currency, checking the photo, metadata and reuse…</p>`;
+  try {
+    const res = await fetch(`/api/tranches/${tid}/proof`, { method: "POST", body: fd });
+    const v = await res.json();
+    if (!res.ok) throw new Error(v.detail || res.statusText);
+    const cls = { approve: "ok", reject: "bad", review: "review" }[v.decision];
+    $("#result").innerHTML = `<h3><span class="badge ${cls}">${v.decision}</span> ${v.paid ? "— money released 💸" : v.decision === "approve" ? "— waiting for enough held funds" : ""}</h3>
+      <p>${esc(v.message_to_volunteer)}</p>
+      <ul class="checks">${v.checks.map((c) => `<li class="${c.ok === true ? "ok" : c.ok === false ? "bad" : "na"}">${esc(c.name)} — ${esc(c.detail)}</li>`).join("")}</ul>
+      ${v.money && v.money.converted ? `<p class="small muted">Receipt ${v.money.receipt_total.toLocaleString()} ${esc(v.money.receipt_currency)} = ${money(v.money.converted)} (${esc(v.money.rate_source)}), planned ${money(v.money.tranche)}</p>` : ""}`;
+    setTimeout(refresh, 800);
+  } catch (e) { $("#result").innerHTML = `<div class="note">⚠️ ${esc(e.message)}</div>`; $("#send").disabled = false; }
+}
+login();
+</script>
+</body>
+</html>

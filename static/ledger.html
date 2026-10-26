@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proof of Good — public ledger</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@33.3.2/dist/ag-grid-community.min.js"></script>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="/static/app.js"></script>
+<script>
+(async () => {
+  const rows = await api("/api/ledger");
+  const inflow = rows.filter((r) => r.kind === "donation").reduce((s, r) => s + (r.amount || 0), 0);
+  const out = rows.filter((r) => r.kind === "payout").reduce((s, r) => s + (r.amount || 0), 0);
+  const back = rows.filter((r) => r.kind === "refund").reduce((s, r) => s + (r.amount || 0), 0);
+  $("#app").innerHTML = header("ledger") + `
+  <section class="hero" style="padding-bottom:10px"><h1>Every dollar, in public.</h1>
+  <p>${money(inflow)} donated · ${money(out)} released after AI-verified proof · ${money(back)} refunded · ${money(inflow - out - back)} still held.</p></section>
+  <div class="card" style="padding:8px"><div id="grid" class="ag-theme-quartz"></div></div>
+  <p class="small muted" style="margin-top:10px">Table powered by AG Grid. Click a photo cell to open the proof; PayPal ids are the real sandbox transaction ids.</p>`;
+  const icon = { donation: "💙", proof: "📎", verdict: "🤖", payout: "💸", refund: "↩️", note: "📝" };
+  agGrid.createGrid(document.getElementById("grid"), {
+    rowData: rows,
+    defaultColDef: { sortable: true, filter: true, resizable: true },
+    columnDefs: [
+      { field: "at", headerName: "When", width: 150, valueFormatter: (p) => when(p.value), sort: "desc" },
+      { field: "campaign", headerName: "Campaign", width: 230 },
+      { field: "kind", headerName: "Event", width: 110, cellRenderer: (p) => `${icon[p.value] || ""} ${p.value}` },
+      { field: "amount", headerName: "USD", width: 110, type: "numericColumn", valueFormatter: (p) => p.value == null ? "" : money(p.value),
+        cellStyle: (p) => ({ color: p.data.kind === "payout" ? "#0b6e4f" : p.data.kind === "refund" ? "#b23a3a" : "#1f2a37", fontWeight: 700 }) },
+      { field: "text", headerName: "What happened", flex: 1, minWidth: 320, wrapText: true, autoHeight: true },
+      { field: "photo", headerName: "Proof", width: 90, cellRenderer: (p) => p.value ? `<a href="/uploads/${p.value}" target="_blank"><img src="/uploads/${p.value}" style="height:36px;border-radius:6px;margin-top:3px"></a>` : "" },
+      { field: "ref", headerName: "PayPal / proof id", width: 190, cellClass: "mono" },
+    ],
+  });
+})();
+</script>
+</body>
+</html>
