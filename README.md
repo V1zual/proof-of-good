@@ -23,7 +23,8 @@ Everything lands in a public ledger (AG Grid) with the real PayPal transaction i
 
 ## Try it (judges)
 
-Live demo: **[URL]** · Telegram: **[@bot]**
+Live demo: **https://proof-of-good.onrender.com** · Telegram: **[@paidup_agent2_bot](https://t.me/paidup_agent2_bot)**
+(free hosting — the first visit after a quiet period can take up to a minute to wake the server)
 
 1. **Donate.** Open a campaign, press the PayPal button and log in with the sandbox buyer shown on the page.
    The ledger shows the donation as *held*.

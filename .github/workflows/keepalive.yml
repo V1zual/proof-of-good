@@ -1,0 +1,12 @@
+# The demo runs on Render's free tier, which sleeps after 15 idle minutes and then stops the Telegram bot.
+# A ping every 10 minutes keeps the site and the bot awake for judges.
+name: keep-alive
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS -m 90 https://proof-of-good.onrender.com/healthz || true

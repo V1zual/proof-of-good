@@ -67,9 +67,14 @@ def _campaign_view(c: dict, full: bool = False) -> dict:
 
 # ---------- pages ----------
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def page_index():
     return FileResponse(STATIC / "index.html")
+
+
+@app.api_route("/healthz", methods=["GET", "HEAD"])
+async def healthz():
+    return {"ok": True}
 
 
 @app.get("/c/{cid}")
