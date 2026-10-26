@@ -71,7 +71,7 @@ function loadPayPal(cfg) {
   }).render("#paypal-buttons");
   if (window.paypal) return mount();
   const s = document.createElement("script");
-  s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.paypal_client_id)}&currency=USD&intent=capture&components=buttons`;
+  s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.paypal_client_id)}&currency=USD&intent=capture&components=buttons&disable-funding=card,credit,paylater,venmo`;
   s.onload = mount;
   document.head.appendChild(s);
 }
