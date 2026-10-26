@@ -23,13 +23,26 @@ ADMIN_KEY = os.environ.get("ADMIN_KEY", "")
 async def lifespan(app: FastAPI):
     seed.seed()
     config.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    tasks = [asyncio.create_task(_housekeeping())]
+    tasks = [asyncio.create_task(_housekeeping()), asyncio.create_task(_warm_up())]
     if os.environ.get("RUN_BOT", "1") == "1":
         from . import bot
         tasks.append(asyncio.create_task(bot.run_in_background()))
     yield
     for t in tasks:
         t.cancel()
+
+
+async def _warm_up():
+    """The first audit after a deploy took ~70 s (cold imports and connections); pay that cost at start-up instead."""
+    from . import audit
+    try:
+        audit._c2pa(b"")
+        await audit.uah_rate("USD")
+        await audit._generate([{"text": "Reply with {\"ok\": true}"}],
+                              {"type": "OBJECT", "properties": {"ok": {"type": "BOOLEAN"}}})
+        log.info("warm-up done")
+    except Exception:
+        log.exception("warm-up")
 
 
 async def _housekeeping():
