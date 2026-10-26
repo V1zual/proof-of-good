@@ -57,6 +57,10 @@ class PayPal:
                 "description": description[:127],
                 "amount": {"currency_code": currency, "value": f"{amount:.2f}"},
             }],
+            # a donation: our name in the PayPal window, no shipping address step
+            "payment_source": {"paypal": {"experience_context": {
+                "brand_name": "Proof of Good", "shipping_preference": "NO_SHIPPING", "user_action": "PAY_NOW",
+            }}},
         })
 
     async def capture_order(self, order_id: str) -> dict:
