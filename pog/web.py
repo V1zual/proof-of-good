@@ -3,6 +3,8 @@ import asyncio
 import json
 import logging
 import os
+import time
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -142,8 +144,12 @@ async def api_volunteer_login(body: dict):
     return _campaign_view(c, full=True)
 
 
+JOBS: dict[str, dict] = {}  # audit jobs the page polls: id -> {events, done, result, error}
+
+
 @app.post("/api/tranches/{tid}/proof")
 async def api_proof(tid: str, code: str = Form(...), receipt: UploadFile = File(...), photo: UploadFile = File(...)):
+    """Starts the audit and returns a job id at once; the page polls /api/jobs/{id} to show every check live."""
     t = store.tranche(tid)
     c = store.campaign(t["campaign_id"]) if t else None
     if not c or c["volunteer_code"] != code.strip().upper():
@@ -152,14 +158,59 @@ async def api_proof(tid: str, code: str = Form(...), receipt: UploadFile = File(
     if len(r) > 12_000_000 or len(p) > 12_000_000:
         raise HTTPException(413, "Image too large (max 12 MB)")
     try:
-        v = await service.submit_proof(tid, r, p, "website")
+        service.check_tranche(tid)
     except ValueError as ex:
         raise HTTPException(400, str(ex))
-    except Exception as ex:
-        log.exception("proof")
-        raise HTTPException(500, f"Audit failed: {str(ex)[:200]}")
-    return {k: v.get(k) for k in ("decision", "confidence", "summary", "reasons", "message_to_volunteer", "checks",
-                                  "money", "files", "paid")}
+    job_id = uuid.uuid4().hex[:12]
+    job = JOBS[job_id] = {"events": [], "done": False, "result": None, "error": None, "started": time.time()}
+
+    async def step(event: dict):
+        event["t"] = round(time.time() - job["started"], 1)
+        job["events"].append(event)
+
+    async def run():
+        try:
+            v = await service.submit_proof(tid, r, p, "website", step)
+            job["result"] = {k: v.get(k) for k in ("decision", "confidence", "summary", "reasons",
+                                                   "message_to_volunteer", "checks", "money", "files", "paid")}
+        except Exception as ex:
+            log.exception("proof")
+            job["error"] = str(ex)[:300]
+        job["done"] = True
+
+    asyncio.create_task(run())
+    for old in sorted(JOBS, key=lambda k: JOBS[k]["started"])[:-50]:
+        JOBS.pop(old, None)
+    return {"job": job_id}
+
+
+@app.get("/api/jobs/{job_id}")
+async def api_job(job_id: str, after: int = 0):
+    job = JOBS.get(job_id)
+    if not job:
+        raise HTTPException(404)
+    return {"events": job["events"][after:], "done": job["done"], "result": job["result"], "error": job["error"]}
+
+
+@app.get("/d/{did}")
+async def page_donation(did: str):
+    return FileResponse(STATIC / "donation.html")
+
+
+@app.get("/api/donations/{did}")
+async def api_donation(did: str):
+    d = store.donation(did)
+    if not d:
+        raise HTTPException(404)
+    c = store.campaign(d["campaign_id"])
+    parts = service.allocation(c["id"]).get(did, [])
+    tranches = {t["id"]: _tranche_view(t) for t in store.tranches(c["id"])}
+    for p in parts:
+        if p.get("tranche"):
+            p["detail"] = tranches[p["tranche"]]
+    return {"donation": {k: d[k] for k in ("id", "amount", "currency", "status", "created", "donor_name")},
+            "campaign": {k: c[k] for k in ("id", "title", "place", "volunteer_name", "status")},
+            "totals": store.totals(c["id"]), "parts": parts}
 
 
 @app.post("/api/campaigns/{cid}/fail")

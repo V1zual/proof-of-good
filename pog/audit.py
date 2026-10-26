@@ -1,27 +1,30 @@
 """The AI auditor: receipt + photo + metadata -> verdict on a tranche.
 
-Checks, in order:
+Checks, in order (each one is reported live through `on_step`, so the site and the bot can show the audit as it runs):
   1. file facts     sha256 (exact duplicate), perceptual hash (same picture reused), EXIF date / GPS / software,
                     C2PA content credentials when present
-  2. receipt        Gemini reads store, items, total, currency, date; says if it looks like a real printed receipt
-  3. money          total converted to the campaign currency with the National Bank of Ukraine rate,
+  2. receipt+photo  in parallel: Gemini reads the receipt (store, items, total, currency, date, does it look real)
+                    and looks at the photo (what is in it, is it the tranche item, is it a real on-site photo)
+  3. money          receipt total converted to the campaign currency at the National Bank of Ukraine rate,
                     compared with the planned tranche amount
-  4. photo          Gemini describes what is in the picture, whether it is the item from the receipt and whether
-                    it looks like a screenshot, a stock image or an AI render
-  5. verdict        Gemini weighs everything and writes the public explanation; hard failures override it
+  4. verdict        Gemini weighs everything and writes the public explanation; hard failures override it
 """
+import asyncio
 import base64
 import datetime as dt
 import hashlib
 import io
 import json
 import time
+from typing import Awaitable, Callable
 
 import httpx
 import imagehash
 from PIL import ExifTags, Image
 
 from . import config
+
+Step = Callable[[dict], Awaitable[None]] | None
 
 # ---------- file facts ----------
 
@@ -161,20 +164,23 @@ PHOTO_SCHEMA = {"type": "OBJECT", "properties": {
     "description": {"type": "STRING"},
     "objects": {"type": "ARRAY", "items": {"type": "STRING"}},
     "setting": {"type": "STRING"},
-    "matches_receipt": {"type": "BOOLEAN"},
-    "match_explanation": {"type": "STRING"},
+    "shows_item": {"type": "BOOLEAN"},
+    "item_explanation": {"type": "STRING"},
+    "visible_brand_or_model": {"type": "STRING"},
     "is_screenshot_or_stock_or_ai": {"type": "BOOLEAN"},
     "concerns": {"type": "ARRAY", "items": {"type": "STRING"}},
-}, "required": ["description", "objects", "setting", "matches_receipt", "match_explanation",
+}, "required": ["description", "objects", "setting", "shows_item", "item_explanation", "visible_brand_or_model",
                 "is_screenshot_or_stock_or_ai", "concerns"]}
 
 VERDICT_SCHEMA = {"type": "OBJECT", "properties": {
     "decision": {"type": "STRING", "enum": ["approve", "reject", "review"]},
     "confidence": {"type": "NUMBER"},
+    "photo_matches_receipt": {"type": "BOOLEAN"},
     "summary_for_donors": {"type": "STRING"},
     "reasons": {"type": "ARRAY", "items": {"type": "STRING"}},
     "message_to_volunteer": {"type": "STRING"},
-}, "required": ["decision", "confidence", "summary_for_donors", "reasons", "message_to_volunteer"]}
+}, "required": ["decision", "confidence", "photo_matches_receipt", "summary_for_donors", "reasons",
+                "message_to_volunteer"]}
 
 
 async def read_receipt(data: bytes) -> dict:
@@ -186,129 +192,148 @@ async def read_receipt(data: bytes) -> dict:
     return await _generate([{"text": prompt}, _img(data)], RECEIPT_SCHEMA)
 
 
-async def inspect_photo(data: bytes, receipt: dict, tranche_title: str, place: str) -> dict:
-    prompt = (f"You are an auditor for a donation platform. A volunteer claims this photo shows the purchased "
-              f"item(s) delivered for the tranche '{tranche_title}' in {place}. The receipt lists: "
-              f"{json.dumps(receipt.get('items', []), ensure_ascii=False)} from {receipt.get('store', '?')}. "
-              f"Describe the photo, list the objects, describe the setting, say whether the item from the receipt "
-              f"is really visible (same kind, brand or model where readable), and whether the picture looks like "
-              f"a screenshot, a stock or catalogue image, or an AI render instead of a phone photo taken on site.")
+async def inspect_photo(data: bytes, tranche_title: str, place: str) -> dict:
+    prompt = (f"You are an auditor for a donation platform. A volunteer claims this photo shows what was bought "
+              f"for '{tranche_title}', delivered in {place}. Describe the photo, list the objects, describe the "
+              f"setting, say whether that item is really visible (shows_item), quote any brand or model you can "
+              f"read, and say whether the picture looks like a screenshot, a stock or catalogue image or an AI "
+              f"render instead of a phone photo taken on site.")
     return await _generate([{"text": prompt}, _img(data)], PHOTO_SCHEMA)
 
 
 async def decide(context: dict) -> dict:
     prompt = (f"Today is {dt.date.today().isoformat()}. "
               "You are the final auditor of Proof of Good, a platform where donated money is released to a "
-              "volunteer only when proof of the purchase is convincing. Weigh all the evidence below and decide: "
-              "approve (release the money), reject (clear signs of fraud or wrong item), or review (unclear, a "
-              "human should look). Be fair to honest volunteers: a receipt total within the tolerance, a matching "
-              "photo and plausible metadata should be approved; missing EXIF alone is not fraud (messengers strip "
-              "it). Write summary_for_donors as one warm sentence in English telling donors what their money "
-              "bought (name the item and the place). Write message_to_volunteer in English: what passed, what to "
-              "fix if anything.\n\nEvidence:\n" + json.dumps(context, ensure_ascii=False, default=str))
+              "volunteer only when proof of the purchase is convincing. Weigh all the evidence below. Set "
+              "photo_matches_receipt: is the item in the photo the one on the receipt (same kind, and the same "
+              "brand/model where both are readable)? Then decide: approve (release the money), reject (clear signs "
+              "of fraud or wrong item), or review (unclear, a human should look). Be fair to honest volunteers: a "
+              "receipt total within the tolerance, a matching photo and plausible metadata should be approved; "
+              "missing EXIF alone is not fraud (messengers strip it). Write summary_for_donors as one warm sentence "
+              "in English telling donors what their money bought (name the item and the place). Write "
+              "message_to_volunteer in English: what passed, what to fix if anything, and which extra photo would "
+              "settle any doubt.\n\nEvidence:\n" + json.dumps(context, ensure_ascii=False, default=str))
     return await _generate([{"text": prompt}], VERDICT_SCHEMA)
 
 
 # ---------- the audit ----------
 
 async def audit(tranche: dict, campaign: dict, receipt_bytes: bytes, photo_bytes: bytes,
-                known_phashes: list[tuple[str, str, str]], known_shas: set[str]) -> dict:
+                known_phashes: list[tuple[str, str, str]], known_shas: set[str], on_step: Step = None) -> dict:
     """Runs every check and returns {decision, reasons, checks, receipt, photo, facts, money, summary...}."""
     checks: list[dict] = []
     hard_fail = False
 
-    def check(name: str, ok: bool | None, detail: str, hard: bool = False):
+    async def emit(**event):
+        if on_step:
+            await on_step(event)
+
+    async def check(name: str, ok: bool | None, detail: str, hard: bool = False):
         nonlocal hard_fail
         checks.append({"name": name, "ok": ok, "detail": detail})
         if ok is False and hard:
             hard_fail = True
+        await emit(kind="check", name=name, ok=ok, detail=detail)
 
+    # 1. file facts: duplicates, reuse, metadata
+    await emit(kind="stage", name="Fingerprinting the files")
     rf, pf = file_facts(receipt_bytes), file_facts(photo_bytes)
-
-    # 1. duplicates and reuse
     for label, f in (("receipt", rf), ("photo", pf)):
         if f["sha256"] in known_shas:
-            check(f"{label}: unique file", False, "this exact file was already submitted for another tranche", True)
+            await check(f"{label}: unique file", False, "this exact file was already submitted for another tranche", True)
+            continue
+        near = [(imagehash.hex_to_hash(f["phash"]) - imagehash.hex_to_hash(h), pid) for h, pid, _ in known_phashes]
+        near = [x for x in near if x[0] <= config.PHASH_SAME]
+        if near:
+            await check(f"{label}: not reused", False, "looks like a picture already used as proof elsewhere", True)
         else:
-            near = [(imagehash.hex_to_hash(f["phash"]) - imagehash.hex_to_hash(h), pid) for h, pid, _ in known_phashes]
-            near = [x for x in near if x[0] <= config.PHASH_SAME]
-            if near:
-                check(f"{label}: not reused", False, f"looks like a picture already used as proof ({near[0][1]})", True)
-            else:
-                check(f"{label}: not reused", True, "no match among stored proofs")
+            await check(f"{label}: not reused", True, "no match among stored proofs")
 
-    # 2. metadata
     created = dt.datetime.fromtimestamp(campaign["created"])
     for label, f in (("receipt", rf), ("photo", pf)):
         if f.get("taken"):
             taken = dt.datetime.fromisoformat(f["taken"])
             if taken < created - dt.timedelta(days=1):
-                check(f"{label}: taken after the campaign started", False,
-                      f"shot {taken:%Y-%m-%d}, campaign started {created:%Y-%m-%d}", True)
+                await check(f"{label}: taken after the campaign started", False,
+                            f"shot {taken:%Y-%m-%d}, campaign started {created:%Y-%m-%d}", True)
             elif taken > dt.datetime.now() + dt.timedelta(days=1):
-                check(f"{label}: date plausible", False, f"camera date {taken:%Y-%m-%d} is in the future")
+                await check(f"{label}: date plausible", False, f"camera date {taken:%Y-%m-%d} is in the future")
             else:
-                check(f"{label}: taken after the campaign started", True, f"shot {taken:%Y-%m-%d %H:%M}")
+                await check(f"{label}: taken after the campaign started", True, f"shot {taken:%Y-%m-%d %H:%M}")
         else:
-            check(f"{label}: capture date", None, "no camera metadata (sent compressed?)")
+            await check(f"{label}: capture date", None, "no camera metadata (sent compressed?)")
         if f.get("software"):
             edited = any(k in f["software"].lower() for k in ("photoshop", "gimp", "lightroom", "snapseed", "canva"))
-            check(f"{label}: not edited", not edited, f"software: {f['software']}")
+            await check(f"{label}: not edited", not edited, f"software: {f['software']}")
         if f.get("gps"):
-            check(f"{label}: location", None, f"GPS {f['gps']['lat']}, {f['gps']['lon']}")
+            await check(f"{label}: location", None, f"GPS {f['gps']['lat']}, {f['gps']['lon']}")
         if f.get("c2pa"):
-            check(f"{label}: content credentials", None, f"C2PA by {f['c2pa'].get('generator') or '?'}")
+            gen = (f["c2pa"].get("generator") or "").lower()
+            ai = any(k in gen for k in ("openai", "dall", "firefly", "midjourney", "gemini", "imagen", "stable"))
+            await check(f"{label}: content credentials", False if ai else None,
+                        f"C2PA manifest by {f['c2pa'].get('generator') or '?'}" + (" — an AI generator" if ai else ""),
+                        hard=ai)
 
-    # 3. receipt
-    receipt = await read_receipt(receipt_bytes)
+    # 2. receipt and photo, read in parallel
+    await emit(kind="stage", name="Reading the receipt and looking at the photo")
+    receipt, photo = await asyncio.gather(read_receipt(receipt_bytes),
+                                          inspect_photo(photo_bytes, tranche["title"], campaign["place"]))
     if not receipt["is_receipt"]:
-        check("receipt: readable", False, "the picture is not a receipt", True)
+        await check("receipt: readable", False, "the picture is not a receipt", True)
     else:
-        check("receipt: readable", True, f"{receipt['store']}, {len(receipt['items'])} item(s), "
-                                         f"{receipt['total']:.2f} {receipt['currency']}, {receipt['date'] or 'no date'}")
-        check("receipt: looks genuine", receipt["looks_real"], "; ".join(receipt["concerns"]) or "no concerns")
+        items = ", ".join(i["name"] for i in receipt["items"][:3])
+        await check("receipt: readable", True, f"{receipt['store']} — {items} — {receipt['total']:,.2f} "
+                                               f"{receipt['currency']}, {receipt['date'] or 'no date'}")
+        await check("receipt: looks genuine", receipt["looks_real"], "; ".join(receipt["concerns"]) or "printed receipt")
         if receipt.get("date"):
             try:
                 rd = dt.date.fromisoformat(receipt["date"][:10])
-                check("receipt: dated after the campaign started", rd >= created.date() - dt.timedelta(days=1),
-                      f"receipt {rd}, campaign started {created:%Y-%m-%d}", True)
+                await check("receipt: dated after the campaign started", rd >= created.date() - dt.timedelta(days=1),
+                            f"receipt {rd}, campaign started {created:%Y-%m-%d}", True)
             except ValueError:
                 pass
+    await check("photo: shows the item", photo["shows_item"], photo["item_explanation"], True)
+    await check("photo: real on-site photo", not photo["is_screenshot_or_stock_or_ai"],
+                "; ".join(photo["concerns"]) or photo["setting"], True)
 
-    # 4. money
+    # 3. money
     money = {}
     if receipt["is_receipt"] and receipt["total"]:
+        await emit(kind="stage", name="Converting the receipt total")
         try:
             paid = await convert(receipt["total"], receipt["currency"], campaign["currency"])
+            rate = await uah_rate(campaign["currency"]) if receipt["currency"].upper() == "UAH" else None
             money = {"receipt_total": receipt["total"], "receipt_currency": receipt["currency"],
                      "converted": paid, "currency": campaign["currency"], "tranche": tranche["amount"],
-                     "rate_source": "National Bank of Ukraine"}
+                     "rate": rate, "rate_source": "National Bank of Ukraine"}
             diff = (paid - tranche["amount"]) / tranche["amount"]
-            check("amount matches the tranche", abs(diff) <= config.AMOUNT_TOLERANCE,
-                  f"receipt {paid:.2f} {campaign['currency']} vs planned {tranche['amount']:.2f} ({diff:+.0%})",
-                  hard=diff > config.AMOUNT_TOLERANCE * 2 or diff < -0.5)
+            await check("amount matches the tranche", abs(diff) <= config.AMOUNT_TOLERANCE,
+                        f"{receipt['total']:,.2f} {receipt['currency']} = {paid:,.2f} {campaign['currency']}"
+                        + (f" at {rate:.2f}" if rate else "") + f" vs planned {tranche['amount']:,.2f} ({diff:+.0%})",
+                        hard=diff > config.AMOUNT_TOLERANCE * 2 or diff < -0.5)
         except Exception as ex:
-            check("amount matches the tranche", None, f"could not convert: {ex}")
+            await check("amount matches the tranche", None, f"could not convert: {ex}")
 
-    # 5. photo
-    photo = await inspect_photo(photo_bytes, receipt, tranche["title"], campaign["place"])
-    check("photo: shows the purchased item", photo["matches_receipt"], photo["match_explanation"], True)
-    check("photo: real on-site photo", not photo["is_screenshot_or_stock_or_ai"],
-          "; ".join(photo["concerns"]) or photo["setting"], True)
-
-    # 6. verdict
+    # 4. verdict
+    await emit(kind="stage", name="Weighing the evidence")
     context = {"tranche": {"title": tranche["title"], "amount": tranche["amount"], "currency": campaign["currency"]},
                "campaign": {"title": campaign["title"], "place": campaign["place"]},
                "checks": checks, "receipt": receipt, "photo": photo, "money": money,
                "receipt_file": {k: rf.get(k) for k in ("taken", "make", "model", "software", "gps", "has_exif")},
                "photo_file": {k: pf.get(k) for k in ("taken", "make", "model", "software", "gps", "has_exif")}}
     verdict = await decide(context)
+    if receipt["is_receipt"] and photo["shows_item"]:
+        await check("photo matches the receipt", verdict["photo_matches_receipt"],
+                    f"photo: {photo['visible_brand_or_model'] or photo['description'][:80]}", True)
     if hard_fail and verdict["decision"] == "approve":
         verdict["decision"] = "reject"
         verdict["reasons"].insert(0, "a hard check failed")
     failed = [c for c in checks if c["ok"] is False]
-    return {"decision": verdict["decision"], "confidence": verdict["confidence"],
-            "summary": verdict["summary_for_donors"], "reasons": verdict["reasons"],
-            "message_to_volunteer": verdict["message_to_volunteer"], "checks": checks,
-            "failed": [c["name"] for c in failed], "receipt": receipt, "photo": photo, "money": money,
-            "receipt_facts": rf, "photo_facts": pf, "at": time.time()}
+    result = {"decision": verdict["decision"], "confidence": verdict["confidence"],
+              "summary": verdict["summary_for_donors"], "reasons": verdict["reasons"],
+              "message_to_volunteer": verdict["message_to_volunteer"], "checks": checks,
+              "failed": [c["name"] for c in failed], "receipt": receipt, "photo": photo, "money": money,
+              "receipt_facts": rf, "photo_facts": pf, "at": time.time()}
+    await emit(kind="verdict", decision=result["decision"], summary=result["summary"], reasons=result["reasons"],
+               message=result["message_to_volunteer"])
+    return result

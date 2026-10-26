@@ -2,6 +2,7 @@
 import asyncio
 import html
 import logging
+import time
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ChatAction, ParseMode
@@ -113,14 +114,41 @@ async def on_pick(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if len(images) < 2:
         return await q.edit_message_text("Send the receipt and the photo first.")
     ctx.user_data["images"] = []
-    await q.edit_message_text("🔍 Auditing: reading the receipt, checking the photo, metadata and the rate…")
+    await q.edit_message_text("🔍 <b>Auditing…</b>", parse_mode=ParseMode.HTML)
     await ctx.bot.send_chat_action(q.message.chat_id, ChatAction.TYPING)
+    lines, last = [], [0.0]
+
+    async def step(e: dict):
+        line = _step_line(e)
+        if line:
+            lines.append(line)
+        if time.time() - last[0] > 1.0 or e["kind"] in ("verdict", "payout"):
+            last[0] = time.time()
+            try:
+                await q.edit_message_text("🔍 <b>Auditing</b>\n" + "\n".join(lines[-16:]), parse_mode=ParseMode.HTML)
+            except Exception:
+                pass  # "message is not modified" or rate limit — the next step redraws it
+
     try:
-        v = await service.submit_proof(tid, images[0], images[1], "telegram")
+        v = await service.submit_proof(tid, images[0], images[1], "telegram", step)
     except Exception as ex:
         log.exception("proof")
         return await q.message.reply_html(f"⚠️ {html.escape(str(ex)[:300])}")
     await q.message.reply_html(service._volunteer_text(store.tranche(tid), v))
+
+
+def _step_line(e: dict) -> str:
+    esc = html.escape
+    if e["kind"] == "stage":
+        return f"⏳ {esc(e['name'])}…"
+    if e["kind"] == "check":
+        mark = {True: "✔", False: "✖", None: "·"}[e["ok"]]
+        return f"{mark} {esc(e['name'])} — {esc(e['detail'][:70])}"
+    if e["kind"] == "verdict":
+        return f"<b>→ {esc(e['decision'])}</b>"
+    if e["kind"] == "payout":
+        return f"💸 <b>{service.money(e['amount'])}</b> sent with PayPal Payouts ({esc(e['batch'])})"
+    return ""
 
 
 def build() -> Application:

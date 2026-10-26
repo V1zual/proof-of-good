@@ -173,6 +173,10 @@ def donations(cid: str) -> list[dict]:
     return _rows("SELECT * FROM donations WHERE campaign_id=? ORDER BY created", cid)
 
 
+def donation(did: str) -> dict | None:
+    return _row("SELECT * FROM donations WHERE id=?", did)
+
+
 def set_donation(did: str, **fields) -> None:
     cols = ", ".join(f"{k}=?" for k in fields)
     _exec(f"UPDATE donations SET {cols} WHERE id=?", *fields.values(), did)

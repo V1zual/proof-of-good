@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Proof of Good — public ledger</title>
+<title>Public ledger — Proof of Good</title>
 <link rel="stylesheet" href="/static/app.css">
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@33.3.2/dist/ag-grid-community.min.js"></script>
 </head>
@@ -12,30 +12,62 @@
 <script src="/static/app.js"></script>
 <script>
 (async () => {
-  const rows = await api("/api/ledger");
-  const inflow = rows.filter((r) => r.kind === "donation").reduce((s, r) => s + (r.amount || 0), 0);
-  const out = rows.filter((r) => r.kind === "payout").reduce((s, r) => s + (r.amount || 0), 0);
-  const back = rows.filter((r) => r.kind === "refund").reduce((s, r) => s + (r.amount || 0), 0);
+  const [cfg, rows] = await Promise.all([config(), api("/api/ledger")]);
+  const total = (kind) => rows.filter((r) => r.kind === kind).reduce((s, r) => s + (r.amount || 0), 0);
+  const inflow = total("donation"), out = total("payout"), back = total("refund");
+  const campaigns = [...new Set(rows.map((r) => r.campaign))];
   $("#app").innerHTML = header("ledger") + `
-  <section class="hero" style="padding-bottom:10px"><h1>Every dollar, in public.</h1>
-  <p>${money(inflow)} donated · ${money(out)} released after AI-verified proof · ${money(back)} refunded · ${money(inflow - out - back)} still held.</p></section>
-  <div class="card" style="padding:8px"><div id="grid" class="ag-theme-quartz"></div></div>
-  <p class="small muted" style="margin-top:10px">Table powered by AG Grid. Click a photo cell to open the proof; PayPal ids are the real sandbox transaction ids.</p>`;
+  <section style="padding:30px 0 20px"><div class="eyebrow">Public ledger</div>
+    <h1 class="display" style="margin-top:10px">Every dollar, in public.</h1>
+    <p class="lead" style="margin-top:12px">Each donation, proof, AI verdict, payout and refund — with the real PayPal transaction ids.</p></section>
+  <div class="stats" style="margin-bottom:18px">
+    <div><b>${money0(inflow)}</b><span>donated</span></div><div><b>${money0(out)}</b><span>released after proof</span></div>
+    <div><b>${money0(back)}</b><span>refunded</span></div><div><b>${money0(inflow - out - back)}</b><span>held right now</span></div>
+  </div>
+  <div class="card" style="padding:14px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <input id="q" placeholder="Search: a name, an amount, a PayPal id…" style="flex:1;min-width:220px">
+      <select id="camp" style="width:auto"><option value="">All campaigns</option>${campaigns.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
+      <select id="kind" style="width:auto"><option value="">All events</option><option value="donation">Donations</option><option value="payout">Payouts</option><option value="refund">Refunds</option><option value="verdict">AI verdicts</option><option value="proof">Proofs</option></select>
+      <button class="btn ghost" id="csv">Download CSV</button>
+    </div>
+    <div id="grid"></div>
+  </div>
+  <p class="small muted" style="margin-top:10px">Table: AG Grid Community. The bottom row sums what the filters show.</p>` + footer(cfg);
+
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const theme = agGrid.themeQuartz.withParams(dark
+    ? { backgroundColor: "#1d232b", foregroundColor: "#eef1f4", headerBackgroundColor: "#1a1f26", borderColor: "#2b333d", accentColor: "#39c08c", fontFamily: "Inter, sans-serif" }
+    : { backgroundColor: "#fffdf8", foregroundColor: "#1d2733", headerBackgroundColor: "#f5f1e8", borderColor: "#e3dccd", accentColor: "#0b6e4f", fontFamily: "Inter, sans-serif" });
   const icon = { donation: "💙", proof: "📎", verdict: "🤖", payout: "💸", refund: "↩️", note: "📝" };
-  agGrid.createGrid(document.getElementById("grid"), {
-    rowData: rows,
+  const color = { payout: "var(--green)", refund: "var(--red)", donation: "var(--ink)" };
+  let kind = "", camp = "";
+  const api_ = agGrid.createGrid(document.getElementById("grid"), {
+    theme, rowData: rows,
     defaultColDef: { sortable: true, filter: true, resizable: true },
     columnDefs: [
-      { field: "at", headerName: "When", width: 150, valueFormatter: (p) => when(p.value), sort: "desc" },
-      { field: "campaign", headerName: "Campaign", width: 230 },
-      { field: "kind", headerName: "Event", width: 110, cellRenderer: (p) => `${icon[p.value] || ""} ${p.value}` },
-      { field: "amount", headerName: "USD", width: 110, type: "numericColumn", valueFormatter: (p) => p.value == null ? "" : money(p.value),
-        cellStyle: (p) => ({ color: p.data.kind === "payout" ? "#0b6e4f" : p.data.kind === "refund" ? "#b23a3a" : "#1f2a37", fontWeight: 700 }) },
+      { field: "at", headerName: "When", width: 140, sort: "desc", valueFormatter: (p) => (p.value ? when(p.value) : "") },
+      { field: "campaign", headerName: "Campaign", width: 220 },
+      { field: "kind", headerName: "Event", width: 120, cellRenderer: (p) => (p.value ? `${icon[p.value] || ""} ${p.value}` : "") },
+      { field: "amount", headerName: "USD", width: 110, type: "numericColumn", valueFormatter: (p) => (p.value == null ? "" : money(p.value)),
+        cellStyle: (p) => ({ color: color[p.data.kind] || "inherit", fontWeight: 700 }) },
       { field: "text", headerName: "What happened", flex: 1, minWidth: 320, wrapText: true, autoHeight: true },
-      { field: "photo", headerName: "Proof", width: 90, cellRenderer: (p) => p.value ? `<a href="/uploads/${p.value}" target="_blank"><img src="/uploads/${p.value}" style="height:36px;border-radius:6px;margin-top:3px"></a>` : "" },
-      { field: "ref", headerName: "PayPal / proof id", width: 190, cellClass: "mono" },
+      { field: "photo", headerName: "Proof", width: 86, sortable: false, filter: false,
+        cellRenderer: (p) => (p.value ? `<a href="/uploads/${p.value}" target="_blank"><img src="/uploads/${p.value}" style="height:36px;width:48px;object-fit:cover;border-radius:6px;margin-top:4px"></a>` : "") },
+      { field: "ref", headerName: "PayPal / proof id", width: 180, cellClass: "mono" },
     ],
+    isExternalFilterPresent: () => !!(kind || camp),
+    doesExternalFilterPass: (n) => (!kind || n.data.kind === kind) && (!camp || n.data.campaign === camp),
+    onModelUpdated: (e) => {
+      const shown = []; e.api.forEachNodeAfterFilter((n) => shown.push(n.data));
+      const sum = (k) => shown.filter((r) => r.kind === k).reduce((s, r) => s + (r.amount || 0), 0);
+      e.api.setGridOption("pinnedBottomRowData", [{ text: `${shown.length} events · in ${money(sum("donation"))} · out ${money(sum("payout"))} · refunded ${money(sum("refund"))}`, campaign: "Total" }]);
+    },
   });
+  $("#q").oninput = () => api_.setGridOption("quickFilterText", $("#q").value);
+  $("#kind").onchange = () => { kind = $("#kind").value; api_.onFilterChanged(); };
+  $("#camp").onchange = () => { camp = $("#camp").value; api_.onFilterChanged(); };
+  $("#csv").onclick = () => api_.exportDataAsCsv({ fileName: "proof-of-good-ledger.csv", processCellCallback: (p) => (p.column.getColId() === "at" && p.value ? new Date(p.value * 1000).toISOString() : p.value) });
 })();
 </script>
 </body>

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Proof of Good — donations released only after proof</title>
+<meta name="description" content="Donations held on PayPal and released to volunteers only after an AI auditor verifies the receipt and the photo. No proof — automatic refunds.">
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
@@ -11,29 +12,91 @@
 <script src="/static/app.js"></script>
 <script>
 (async () => {
-  const cfg = await config();
-  const list = await api("/api/campaigns");
+  const [cfg, list] = await Promise.all([config(), api("/api/campaigns")]);
+  const sum = (k) => list.reduce((s, c) => s + c.totals[k], 0);
   $("#app").innerHTML = header("home") + `
   <section class="hero">
-    ${cfg.sandbox ? '<span class="badge sandbox">PayPal sandbox · test money</span>' : ""}
-    <h1>Donate to people, not to promises.</h1>
-    <p>Your money waits on PayPal. The volunteer buys the thing, sends the receipt and a photo from the spot —
-    and our AI auditor releases the money only when the proof adds up. If it never does, you get a refund.</p>
+    <div>
+      <div class="eyebrow">Donations with receipts</div>
+      <h1 class="display" style="margin-top:14px">Donate to people,<br>not to promises.</h1>
+      <p class="lead" style="margin-top:18px">Your money waits on PayPal. The volunteer buys the thing and sends the receipt and a photo from the spot.
+      An AI auditor checks both — and only then the money moves. If proof never comes, everyone is refunded.</p>
+      <div class="cta"><a class="btn" href="#campaigns">Give to a campaign</a><a class="btn ghost" href="#how">How the audit works</a></div>
+    </div>
+    <div class="demo hide-sm" aria-hidden="true"><div class="card">
+      <div class="eyebrow" style="margin-bottom:12px">Sample audit · 14 s</div>
+      <div class="row"><div class="paper"></div><div class="snap">⚡</div>
+        <div class="small muted">Receipt + photo sent by the volunteer from Telegram</div></div>
+      <ol>
+        <li>Receipt read: petrol generator, 41 000 ₴</li>
+        <li>41 000 ₴ = $900 at the National Bank rate</li>
+        <li>Photo shows the same generator, on site</li>
+        <li>Taken today · never used before</li>
+        <li class="pay"><b>$900 released</b> via PayPal Payouts</li>
+      </ol>
+    </div></div>
   </section>
-  <div class="grid">${list.map((c) => `
-    <a class="card" href="/c/${c.id}" style="color:inherit;text-decoration:none">
-      <h3>${esc(c.title)}</h3><div class="place">📍 ${esc(c.place)} · ${esc(c.volunteer_name)}</div>
-      <div class="story">${esc(c.story.slice(0, 150))}…</div>${bar(c.totals)}
-      <div class="small muted" style="margin-top:8px">${c.tranches.filter((t) => t.status === "paid").length}/${c.tranches.length} tranches released ·
-      ${c.status === "active" ? '<span class="badge ok">active</span>' : `<span class="badge ${c.status === "completed" ? "ok" : "bad"}">${c.status}</span>`}</div>
-    </a>`).join("")}</div>
-  <div class="how">
-    <div><span>💙</span><b>1. Donate with PayPal</b>Money is captured to the platform and held, not sent to anyone.</div>
-    <div><span>🧾</span><b>2. Volunteer sends proof</b>Receipt + photo of the item in place, from the website or Telegram.</div>
-    <div><span>🤖</span><b>3. AI audits it</b>Reads the receipt, converts UAH at the National Bank rate, checks the photo, metadata and reuse.</div>
-    <div><span>💸</span><b>4. Money moves</b>Approved → PayPal payout to the volunteer. Nothing → automatic refunds.</div>
+
+  <div class="stats">
+    <div><b>${money0(sum("raised"))}</b><span>donated</span></div>
+    <div><b>${money0(sum("held"))}</b><span>held, waiting for proof</span></div>
+    <div><b>${money0(sum("paid"))}</b><span>released after AI-verified proof</span></div>
+    <div><b>${money0(sum("refunded"))}</b><span>refunded to donors</span></div>
   </div>
-  <footer>Built for the PayPal AI Hackathon 2026 · Gemini + PayPal Orders, Payouts and Refunds · ${cfg.bot ? `Telegram <a href="https://t.me/${cfg.bot}">@${cfg.bot}</a>` : ""}</footer>`;
+
+  <section class="block" id="campaigns">
+    <h2 class="h2">Open campaigns</h2>
+    <div class="grid">${list.map((c) => {
+      const paid = c.tranches.filter((t) => t.status === "paid").length;
+      return `<a class="card" href="/c/${c.id}">
+        <div class="camp-icon">${icon(c)}</div>
+        <h3>${esc(c.title)}</h3><div class="place">📍 ${esc(c.place)} · ${esc(c.volunteer_name)}</div>
+        ${moneyBar(c.totals)}
+        <div class="small muted" style="margin-top:10px">${paid} of ${c.tranches.length} tranches released ·
+          ${c.status === "active" ? '<span class="badge ok">active</span>' : `<span class="badge ${c.status === "completed" ? "ok" : "bad"}">${c.status}</span>`}</div>
+      </a>`; }).join("")}</div>
+  </section>
+
+  <section class="block" id="how">
+    <h2 class="h2">How the money moves</h2>
+    <div class="card flow"><svg viewBox="0 0 980 230" role="img" aria-label="Donor pays with PayPal; the money is held; the AI auditor checks the proof; approved money goes to the volunteer with PayPal Payouts, otherwise donors are refunded with PayPal Refunds.">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="context-stroke"/></marker></defs>
+      <rect class="box" x="10" y="70" width="170" height="80" rx="14"/><text x="95" y="105" text-anchor="middle">💙 Donor</text><text class="sub" x="95" y="126" text-anchor="middle">PayPal button</text>
+      <rect class="box" x="260" y="70" width="190" height="80" rx="14" style="stroke:var(--amber)"/><text x="355" y="105" text-anchor="middle">Held on PayPal</text><text class="sub" x="355" y="126" text-anchor="middle">Orders v2 · captured</text>
+      <rect class="box" x="530" y="70" width="190" height="80" rx="14" style="stroke:var(--blue)"/><text x="625" y="105" text-anchor="middle">🤖 AI auditor</text><text class="sub" x="625" y="126" text-anchor="middle">receipt · photo · metadata</text>
+      <rect class="box" x="800" y="20" width="170" height="80" rx="14" style="stroke:var(--green)"/><text x="885" y="55" text-anchor="middle">Volunteer</text><text class="sub" x="885" y="76" text-anchor="middle">Payouts v1</text>
+      <rect class="box" x="800" y="130" width="170" height="80" rx="14" style="stroke:var(--red)"/><text x="885" y="165" text-anchor="middle">Back to donor</text><text class="sub" x="885" y="186" text-anchor="middle">Refunds v2</text>
+      <line class="a" x1="180" y1="110" x2="256" y2="110" stroke-width="2.5" marker-end="url(#ar)"/>
+      <line class="a" x1="450" y1="110" x2="526" y2="110" stroke-width="2.5" marker-end="url(#ar)"/>
+      <path class="g" d="M720 98 C760 98 760 60 796 60" fill="none" stroke-width="2.5" marker-end="url(#ar)"/>
+      <path class="r" d="M720 122 C760 122 760 170 796 170" fill="none" stroke-width="2.5" stroke-dasharray="6 5" marker-end="url(#ar)"/>
+      <text class="sub" x="742" y="58" text-anchor="middle">proof OK</text><text class="sub" x="742" y="196" text-anchor="middle">no proof</text>
+    </svg></div>
+    <div class="steps" style="margin-top:18px">
+      <div><i>1</i><b>Give</b><span>Pay with PayPal. The money is captured to the platform and held — it does not go to anyone yet.</span></div>
+      <div><i>2</i><b>Prove</b><span>The volunteer buys the item and sends the receipt and a photo from the spot — website or Telegram.</span></div>
+      <div><i>3</i><b>Audit</b><span>Gemini reads the receipt and the photo; code checks the rate, camera data, edits, AI credentials and reuse.</span></div>
+      <div><i>4</i><b>Release or refund</b><span>Approved: a PayPal payout to the volunteer and a photo update to donors. No proof: PayPal refunds.</span></div>
+    </div>
+  </section>
+
+  <section class="block">
+    <h2 class="h2">What the AI auditor checks</h2>
+    <div class="two">
+      <div class="card"><ul class="checks" style="font-size:15px">
+        <li class="ok"><b>The receipt is real</b> — a printed fiscal receipt, dated after the campaign started, not a mock-up.</li>
+        <li class="ok"><b>The amount adds up</b> — hryvnias converted at the National Bank of Ukraine rate, within 15% of the plan.</li>
+        <li class="ok"><b>The photo shows the item</b> — the same kind, brand or model as on the receipt, on site.</li>
+        <li class="ok"><b>The photo is a photo</b> — not a screenshot, a catalogue picture or an AI render (C2PA credentials too).</li>
+        <li class="ok"><b>Nothing is recycled</b> — perceptual hashing catches a picture already used for any other tranche.</li>
+        <li class="ok"><b>The camera agrees</b> — capture date and editing software from the file's own metadata.</li>
+      </ul></div>
+      <div class="card"><h3>Why this matters</h3>
+        <p class="muted" style="margin:8px 0 0">After every disaster, fake fundraisers appear — and honest volunteers lose donors' trust. Big charities can afford audits;
+        a volunteer raising money for one generator can't. Proof of Good gives every small fundraiser an auditor that works in seconds,
+        and gives every donor a reason to give again.</p></div>
+    </div>
+  </section>` + footer(cfg);
 })();
 </script>
 </body>

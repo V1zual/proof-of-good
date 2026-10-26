@@ -1,6 +1,7 @@
 """What happens with the money: donations in, proofs audited, tranches paid out, failed campaigns refunded.
 Shared by the website and the Telegram bot."""
 import html
+import json
 import logging
 import time
 
@@ -49,18 +50,25 @@ async def finish_donation(order_id: str) -> dict:
 
 # ---------- proofs ----------
 
-async def submit_proof(tid: str, receipt: bytes, photo: bytes, via: str) -> dict:
+def check_tranche(tid: str) -> tuple[dict, dict]:
     t = store.tranche(tid)
     c = store.campaign(t["campaign_id"]) if t else None
     if not t or not c:
         raise ValueError("unknown tranche")
     if t["status"] == "paid":
         raise ValueError("this tranche is already paid")
+    if t["status"] == "checking":
+        raise ValueError("this tranche is being audited right now")
     if c["status"] != "active":
         raise ValueError("this campaign is closed")
+    return t, c
+
+
+async def submit_proof(tid: str, receipt: bytes, photo: bytes, via: str, on_step: audit.Step = None) -> dict:
+    t, c = check_tranche(tid)
     store.set_tranche(tid, status="checking")
     try:
-        v = await audit.audit(t, c, receipt, photo, store.all_phashes(tid), store.all_shas(tid))
+        v = await audit.audit(t, c, receipt, photo, store.all_phashes(tid), store.all_shas(tid), on_step)
     except Exception:
         store.set_tranche(tid, status=t["status"] if t["status"] != "checking" else "waiting")
         raise
@@ -84,11 +92,13 @@ async def submit_proof(tid: str, receipt: bytes, photo: bytes, via: str) -> dict
     if v["decision"] == "approve":
         store.set_tranche(tid, status="verified", verdict=v)
         store.log(c["id"], "verdict", f"✅ AI approved «{t['title']}»: {v['summary']}", None, tid, files["photo"])
-        paid = await _pay_verified(c["id"])
+        paid = await _pay_verified(c["id"], on_step)
         v["paid"] = tid in paid
         if not v["paid"]:
             held = store.totals(c["id"])["held"]
             store.log(c["id"], "note", f"Waiting for funds: {money(held)} held, {money(t['amount'])} needed", None, tid)
+            if on_step:
+                await on_step({"kind": "waiting", "held": held, "needed": t["amount"]})
     elif v["decision"] == "reject":
         store.set_tranche(tid, status="rejected", verdict=v)
         store.log(c["id"], "verdict", f"⛔ AI rejected the proof for «{t['title']}»: " + "; ".join(v["reasons"][:2]),
@@ -116,7 +126,7 @@ def _volunteer_text(t: dict, v: dict) -> str:
 
 # ---------- payouts ----------
 
-async def _pay_verified(cid: str) -> list[str]:
+async def _pay_verified(cid: str, on_step: audit.Step = None) -> list[str]:
     """Pays every verified tranche the held money can cover, in order. Returns the paid tranche ids."""
     c = store.campaign(cid)
     paid = []
@@ -125,6 +135,8 @@ async def _pay_verified(cid: str) -> list[str]:
             continue
         if store.totals(cid)["held"] + 1e-9 < t["amount"]:
             break
+        if on_step:
+            await on_step({"kind": "stage", "name": f"Sending {money(t['amount'])} with PayPal Payouts"})
         try:
             r = await paypal.payout(c["volunteer_email"], t["amount"], c["currency"],
                                     f"Proof of Good: {t['title']}",
@@ -135,14 +147,14 @@ async def _pay_verified(cid: str) -> list[str]:
             continue
         store.add_payout(r["batch_id"], t["id"], c["volunteer_email"], t["amount"], c["currency"], r["status"])
         store.set_tranche(t["id"], status="paid", paid_batch=r["batch_id"], paid_at=time.time())
+        if on_step:
+            await on_step({"kind": "payout", "amount": t["amount"], "batch": r["batch_id"], "tranche": t["title"],
+                           "to": c["volunteer_name"]})
         store.log(cid, "payout", f"💸 {money(t['amount'])} released to {c['volunteer_name']} for «{t['title']}»"
                                  f" (PayPal payout {r['batch_id']})", t["amount"], r["batch_id"])
         paid.append(t["id"])
         verdict = store.tranche(t["id"])["verdict"]
-        summary = ""
-        if verdict:
-            import json
-            summary = json.loads(verdict).get("summary", "")
+        summary = json.loads(verdict).get("summary", "") if verdict else ""
         photo = next((p["file"] for p in store.proofs(t["id"]) if p["kind"] == "photo"), None)
         for chat in store.followers(cid):
             await notify.send(chat, f"✅ <b>{html.escape(c['title'])}</b>\n{html.escape(summary)}\n"
@@ -163,6 +175,36 @@ async def refresh_payouts() -> None:
             store.set_payout(p["batch_id"], status=s["item"] or s["batch"], transaction_id=s["transaction_id"])
         except PayPalError:
             pass
+
+
+# ---------- where a donor's money is ----------
+
+def allocation(cid: str) -> dict[str, list[dict]]:
+    """Donations fill the tranches in order (first dollar in, first tranche). For each donation: the parts of it
+    that went to each tranche, with that tranche's state — so a donor sees exactly what their money bought."""
+    tranches = store.tranches(cid)
+    bounds, start = [], 0.0
+    for t in tranches:
+        bounds.append((start, start + t["amount"], t))
+        start += t["amount"]
+    out, pos = {}, 0.0
+    for d in store.donations(cid):
+        parts = []
+        if d["status"] == "refunded":
+            parts.append({"amount": d["amount"], "state": "refunded"})
+        else:
+            lo, hi = pos, pos + d["amount"]
+            for a, b, t in bounds:
+                share = min(hi, b) - max(lo, a)
+                if share > 0.004:
+                    parts.append({"amount": round(share, 2), "state": t["status"], "tranche": t["id"],
+                                  "title": t["title"]})
+            extra = hi - max(lo, start)
+            if extra > 0.004:
+                parts.append({"amount": round(min(extra, d["amount"]), 2), "state": "surplus"})
+            pos = hi
+        out[d["id"]] = parts
+    return out
 
 
 # ---------- refunds ----------
