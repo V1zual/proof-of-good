@@ -58,6 +58,16 @@ async def _housekeeping():
 app = FastAPI(title="Proof of Good", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def revalidate(request: Request, call_next):
+    """Pages and static files change with every deploy: browsers must ask (a cheap 304) instead of reusing an old copy.
+    Uploaded proofs never change, so they keep the browser's default caching."""
+    response = await call_next(request)
+    if not request.url.path.startswith("/uploads/"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
+
+
 def _tx_view(t: dict) -> dict:
     return {k: t[k] for k in ("id", "tranche_id", "at", "description", "mcc", "amount", "currency", "usd",
                               "receipt_id", "status", "reason", "simulated")} | {"category": cards.MCC.get(t["mcc"], "")}

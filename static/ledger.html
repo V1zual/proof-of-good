@@ -46,7 +46,7 @@
     borderColor: "#272727", accentColor: "#3DD68C", browserColorScheme: "dark", fontFamily: "Geist, system-ui, sans-serif", fontSize: 14, headerFontSize: 14 });
   const icon = { donation: "hand-heart", release: "paper-plane-tilt", card: "credit-card", flag: "snowflake", proof: "paperclip", verdict: "robot", refund: "arrow-u-up-left", note: "note" };
   const color = { release: "var(--blue)", card: "var(--text)", verdict: "var(--green)", refund: "var(--red)", donation: "var(--text)" };
-  let kind = "", camp = "";
+  let kind = "", camp = "", totalsText = "";
   // a short ledger grows with its rows; a long one scrolls inside a fixed box
   const auto = rows.length < 40;
   if (auto) document.getElementById("grid").style.height = "auto";
@@ -60,17 +60,21 @@
       { field: "kind", headerName: "Event", width: 120, cellRenderer: (p) => (p.value ? `${ph(icon[p.value] || "circle")} ${p.value}` : "") },
       { field: "amount", headerName: "USD", width: 100, type: "numericColumn", valueFormatter: (p) => (p.value == null ? "" : money(p.value)),
         cellStyle: (p) => ({ color: color[p.data.kind] || "inherit", fontWeight: 600 }) },
-      { field: "text", headerName: "What happened", flex: 1, minWidth: 280, wrapText: true, autoHeight: true, valueGetter: (p) => p.data && plain(p.data.text) },
+      { field: "text", headerName: "What happened", flex: 1, minWidth: 270, wrapText: true, autoHeight: true, valueGetter: (p) => p.data && plain(p.data.text) },
       { field: "photo", headerName: "Proof", width: 80, sortable: false, filter: false,
         cellRenderer: (p) => (p.value ? `<a href="/uploads/${p.value}" target="_blank" rel="noopener"><img class="cell-img" src="/uploads/${p.value}" alt="Proof photo"></a>` : "") },
-      { field: "ref", headerName: "PayPal or proof id", width: 160, cellClass: "mono" },
+      { field: "ref", headerName: "PayPal or proof id", width: 150, cellClass: "mono" },
     ],
     isExternalFilterPresent: () => !!(kind || camp),
     doesExternalFilterPass: (n) => (!kind || n.data.kind === kind) && (!camp || n.data.campaign === camp),
     onModelUpdated: (e) => {
       const shown = []; e.api.forEachNodeAfterFilter((n) => shown.push(n.data));
       const sum = (k) => shown.filter((r) => r.kind === k).reduce((s, r) => s + (r.amount || 0), 0);
-      e.api.setGridOption("pinnedBottomRowData", [{ text: `${shown.length} events · donated ${money(sum("donation"))} · released ${money(sum("release"))} · refunded ${money(sum("refund"))}`, campaign: "Total" }]);
+      const text = `${shown.length} events · donated ${money(sum("donation"))} · released ${money(sum("release"))} · refunded ${money(sum("refund"))}`;
+      // setting the totals row updates the model again; set it only when the sums change, or the grid redraws forever
+      if (text === totalsText) return;
+      totalsText = text;
+      e.api.setGridOption("pinnedBottomRowData", [{ text, campaign: "Total" }]);
     },
   });
   $("#q").oninput = () => api_.setGridOption("quickFilterText", $("#q").value);

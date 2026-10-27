@@ -19,6 +19,8 @@ img { max-width: 100%; }
 h1, h2, h3 { margin: 0; font-weight: 600; text-wrap: balance; }
 p { margin: 0; text-wrap: pretty; }
 :focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+/* the page scrollbar coming and going must not change the width (the ledger table grows with its rows) */
+html { scrollbar-gutter: stable; }
 .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 64px; }
 .skip { position: absolute; left: 16px; top: -48px; padding: 8px 12px; background: var(--text); color: var(--bg); border-radius: 8px; font: 600 14px/20px var(--font); z-index: 60; text-decoration: none; transition: transform 300ms var(--curve); }
 .skip:focus { transform: translateY(64px); }
