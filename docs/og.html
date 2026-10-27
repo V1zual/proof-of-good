@@ -1,0 +1,61 @@
+<!doctype html>
+<!-- Source of static/og.png (1200x630). Render with headless Chrome:
+     chrome --headless=new --hide-scrollbars --window-size=1200,630 --screenshot=static/og.png docs/og.html -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Proof of Good social card</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@500&display=block">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<style>
+  :root { --bg: #000; --surface: #181818; --surface-2: #1F1F1F; --line: #272727; --line-2: #313131; --muted: #9B9B9B; --green: #3DD68C; --red: #FF6B6B; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: var(--bg); color: #fff; font-family: "Geist", sans-serif; -webkit-font-smoothing: antialiased; }
+  .page { display: grid; grid-template-columns: 1fr 384px; gap: 48px; padding: 64px; height: 100%; }
+  .left { display: flex; flex-direction: column; }
+  .brand { display: flex; align-items: center; gap: 12px; font-size: 24px; line-height: 32px; font-weight: 600; }
+  .mark { width: 32px; height: 32px; border-radius: 9999px; border: 2px solid var(--green); color: var(--green); display: grid; place-items: center; font-size: 18px; }
+  h1 { margin: 64px 0 0; font-size: 60px; line-height: 1; font-weight: 600; background: linear-gradient(90deg, #FFFFFF, #9B9B9B); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  p { margin: 24px 0 0; font-size: 20px; line-height: 28px; color: var(--muted); max-width: 560px; }
+  .chips { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { display: inline-flex; gap: 8px; align-items: center; padding: 4px 12px; border: 1px solid var(--line-2); border-radius: 9999px; background: var(--surface-2); font-size: 16px; line-height: 24px; color: #D4D4D4; }
+  .chip i { color: var(--green); font-size: 18px; }
+  .panel { align-self: center; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); padding: 16px; }
+  .head { padding: 8px; font-size: 14px; line-height: 20px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  .head::before { content: ""; width: 8px; height: 8px; border-radius: 9999px; background: var(--green); }
+  .cardface { border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface-2); padding: 16px; margin-top: 8px; }
+  .lbl { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .bal { font-size: 30px; line-height: 36px; font-weight: 600; margin-top: 4px; }
+  .num { font: 500 14px/20px "Geist Mono", monospace; color: var(--muted); margin-top: 8px; }
+  ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+  li { display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); }
+  .ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: var(--line); font-size: 16px; }
+  .ok .ic { color: var(--green); } .bad .ic { color: var(--red); } .info .ic { color: #fff; }
+  b { display: block; font-size: 14px; line-height: 20px; font-weight: 500; }
+  small { display: block; font-size: 12px; line-height: 16px; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="left">
+    <div class="brand"><span class="mark">✓</span>Proof of Good</div>
+    <h1>Give to volunteers.<br>See every payment.</h1>
+    <p>Donations reach Ukrainian volunteers one budget line at a time, on a card whose every payment is checked by AI.</p>
+    <div class="chips">
+      <span class="chip"><i class="ph ph-check-circle"></i>PayPal Orders, Payouts, Refunds</span>
+
+      <span class="chip"><i class="ph ph-arrow-u-up-left"></i>Misuse refunds donors</span>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="head">The transparent card</div>
+    <div class="cardface"><div class="lbl">Released for bottled water</div><div class="bal">$10.00</div><div class="num">Demo card •• 2026</div></div>
+    <ul>
+      <li class="ok"><span class="ic"><i class="ph ph-shopping-cart"></i></span><div><b>−₴440 at a supermarket</b><small>Matches bottled water for the shelter</small></div></li>
+      <li class="bad"><span class="ic"><i class="ph ph-snowflake"></i></span><div><b>−₴230 cash at an ATM</b><small>The card froze on the spot</small></div></li>
+      <li class="info"><span class="ic"><i class="ph ph-arrow-u-up-left"></i></span><div><b>$2.00 refunded to the donor</b><small>PayPal Refunds</small></div></li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

@@ -84,7 +84,8 @@ pog/paypal.py   PayPal REST client (Orders, Payouts, Refunds)
 pog/web.py      FastAPI: pages, JSON API, live audit jobs, the bank webhook
 pog/bot.py      Telegram bot for volunteers and donors
 pog/store.py    SQLite: campaigns, tranches, donations, card payments, proofs, payouts, ledger
-static/         the site (vanilla JS, PayPal JS SDK, AG Grid)
+static/         the site (vanilla JS, PayPal JS SDK, AG Grid): landing page at /, campaigns at /campaigns
+docs/           landing page plan (landing-page-design skill) and the source of the social card og.png
 ```
 
 ## AI tools used

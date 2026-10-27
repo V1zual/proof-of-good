@@ -10,8 +10,9 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import audit, cards, config, seed, service, store
 
@@ -97,13 +98,37 @@ def _volunteer(code: str) -> dict:
 # ---------- pages ----------
 
 @app.api_route("/", methods=["GET", "HEAD"])
-async def page_index():
-    return FileResponse(STATIC / "index.html")
+async def page_landing():
+    return FileResponse(STATIC / "landing.html")
 
 
 @app.api_route("/healthz", methods=["GET", "HEAD"])
 async def healthz():
     return {"ok": True}
+
+
+@app.get("/campaigns")
+async def page_campaigns():
+    return FileResponse(STATIC / "campaigns.html")
+
+
+@app.get("/privacy")
+async def page_privacy():
+    return FileResponse(STATIC / "privacy.html")
+
+
+@app.get("/terms")
+async def page_terms():
+    return FileResponse(STATIC / "terms.html")
+
+
+@app.exception_handler(StarletteHTTPException)
+async def not_found(request: Request, ex: StarletteHTTPException):
+    """API callers get JSON as before; people who follow a dead link get the branded 404 page."""
+    path = request.url.path
+    if ex.status_code == 404 and not path.startswith(("/api/", "/hooks/")):
+        return FileResponse(STATIC / "404.html", status_code=404)
+    return JSONResponse({"detail": ex.detail}, status_code=ex.status_code, headers=getattr(ex, "headers", None))
 
 
 @app.get("/c/{cid}")

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campaigns · Proof of Good</title>
+<meta name="description" content="Open campaigns on Proof of Good: donations reach volunteers one budget line at a time, on a transparent card checked by AI.">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="Campaigns · Proof of Good">
+<meta property="og:image" content="/static/og.png">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="wrap" id="app"></div>
+<script src="/static/app.js"></script>
+<script>
+(async () => {
+  const [cfg, list] = await Promise.all([config(), api("/api/campaigns")]);
+  const sum = (k) => list.reduce((s, c) => s + c.totals[k], 0);
+  const status = (c) => c.status === "active" ? '<span class="badge ok">active</span>' : `<span class="badge ${c.status === "completed" ? "ok" : "bad"}">${c.status}</span>`;
+  const cards = list.map((c) => {
+    const done = c.tranches.filter((t) => t.status === "accounted").length;
+    return `<a class="card" href="/c/${c.id}">
+      <div class="camp-icon">${icon(c)}</div>
+      <h3>${esc(c.title)}</h3><div class="place">${esc(c.place)} · ${esc(c.volunteer_name)}</div>
+      ${moneyBar(c.totals)}
+      <div class="small muted mt-12">${done} of ${c.tranches.length} budget lines spent and proven · ${status(c)}</div>
+    </a>`;
+  }).join("");
+  $("#app").innerHTML = header("campaigns") + `<main id="main">
+  <section class="page-head"><div class="eyebrow">Open campaigns</div>
+    <h1 class="display">Pick a volunteer.<br>Watch every payment.</h1>
+    <p class="lead">Each campaign gets its money one budget line at a time, on a transparent card whose every payment is checked by AI.</p></section>
+  <div class="stats">
+    <div><b>${money0(sum("raised"))}</b><span>donated</span></div>
+    <div><b>${money0(sum("held"))}</b><span>held on PayPal</span></div>
+    <div><b>${money0(sum("accounted"))}</b><span>spent and proven</span></div>
+    <div><b>${money0(sum("refunded"))}</b><span>refunded to donors</span></div>
+  </div>
+  <section class="block" aria-label="Campaigns">${list.length ? `<div class="grid">${cards}</div>`
+    : emptyHtml("hand-heart", "No campaigns yet", "The demo server is setting up its example campaigns. Reload the page in a few seconds.")}</section></main>` + footer(cfg);
+})().catch(failPage);
+</script>
+</body>
+</html>

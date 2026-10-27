@@ -5,8 +5,8 @@ CAMPAIGNS = [
     ({
         "id": "try", "try_it": 1, "title": "Try it yourself: water for a shelter",
         "story": "A small test campaign for judges and testers. Donate $10 with the sandbox buyer and the first "
-                 "tranche goes to the volunteer's demo card at once. Then open the volunteer portal (code TRY-IT): "
-                 "make the card pay, take a photo of any bottle of water near you and send it. Try cheating too — "
+                 "budget line goes to the volunteer's demo card at once. Then open the volunteer portal (code TRY-IT): "
+                 "make the card pay, take a photo of any bottle of water near you and send it. Try cheating too: "
                  "withdraw cash or send money to another card and watch the campaign freeze.",
         "place": "Ivano-Frankivsk, Ukraine", "country": "UA",
         "volunteer_name": "Test Volunteer", "volunteer_email": "volunteer-test@example.com",
@@ -20,7 +20,7 @@ CAMPAIGNS = [
         "id": "generator", "title": "A generator for the maternity hospital",
         "story": "When the power goes out in Ivano-Frankivsk, the maternity ward switches to flashlights. A 3 kW "
                  "petrol generator keeps the incubators and the delivery room running through a blackout. The money "
-                 "waits on PayPal and reaches the volunteer one purchase at a time — every payment from his "
+                 "waits on PayPal and reaches the volunteer one purchase at a time. Every payment from his "
                  "campaign card is visible here, and the next part is released only after the last one is proven.",
         "place": "Ivano-Frankivsk, Ukraine", "country": "UA",
         "volunteer_name": "Andriy K.", "volunteer_email": "volunteer-andriy@example.com",
@@ -61,5 +61,5 @@ def seed(wipe: bool = False) -> None:
     for c, tranches in CAMPAIGNS:
         if not store.campaign(c["id"]):
             store.add_campaign(c, tranches)
-            store.log(c["id"], "note", f"Campaign created by {c['volunteer_name']} — {len(tranches)} tranches; "
-                                       f"money goes to the transparent card one tranche at a time")
+            store.log(c["id"], "note", f"Campaign created by {c['volunteer_name']}: {len(tranches)} budget lines, "
+                                       f"released to the transparent card one at a time")

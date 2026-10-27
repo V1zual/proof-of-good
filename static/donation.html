@@ -3,50 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Your donation — Proof of Good</title>
+<title>Your donation · Proof of Good</title>
+<meta name="description" content="Where your Proof of Good donation is now: held on PayPal, on the volunteer's transparent card, spent and proven, or refunded.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-<div class="wrap" id="app"><p class="muted" style="padding:40px 0">Loading…</p></div>
+<a class="skip" href="#main">Skip to content</a>
+<div class="wrap" id="app"></div>
 <script src="/static/app.js"></script>
 <script>
 (async () => {
   const id = location.pathname.split("/").pop();
   const [cfg, r] = await Promise.all([config(), api("/api/donations/" + id).catch(() => null)]);
-  if (!r) { $("#app").innerHTML = header("") + `<div class="card" style="margin-top:30px"><h3>Donation not found</h3><p class="muted">The demo server restarts now and then and forgets test donations. <a href="/">Back to campaigns</a></p></div>` + footer(cfg); return; }
+  if (!r) {
+    $("#app").innerHTML = header("") + `<main id="main" class="page-head">${emptyHtml("magnifying-glass", "Donation not found",
+      `The demo server restarts now and then and forgets test donations. <a href="/campaigns">Open the campaigns</a> to give again.`)}</main>` + footer(cfg);
+    return;
+  }
   const d = r.donation, c = r.campaign;
   const partHtml = (p) => {
-    if (p.state === "refunded") return `<li class="rejected"><div class="n">↩</div><div class="t-head"><div><b>Refunded to your PayPal</b> ${badge("refunded")}</div><div class="t-amt">${money(p.amount)}</div></div>
+    if (p.state === "refunded") return `<li class="refunded"><div class="n">${ph("arrow-u-up-left")}</div><div class="t-head"><div><b>Refunded to your PayPal</b> ${badge("refunded")}</div><div class="t-amt">${money(p.amount)}</div></div>
       <div class="t-sum">No verified proof arrived, so PayPal returned your money.</div></li>`;
-    if (p.state === "surplus") return `<li><div class="n">+</div><div class="t-head"><div><b>Above the goal</b> ${badge("surplus")}</div><div class="t-amt">${money(p.amount)}</div></div>
+    if (p.state === "surplus") return `<li><div class="n">${ph("plus")}</div><div class="t-head"><div><b>Above the goal</b> ${badge("surplus")}</div><div class="t-amt">${money(p.amount)}</div></div>
       <div class="t-sum">Held for the volunteer's next verified purchase, or refunded.</div></li>`;
     const t = p.detail || {};
     let body = "";
     if (p.state === "accounted") body = `<div class="t-sum">${esc((t.verdict && t.verdict.summary) || "")}</div>${proofsHtml(t.proofs)}
       ${t.payments && t.payments.length ? `<ul class="txs">${t.payments.map((x) => txHtml(x)).join("")}</ul>` : ""}
-      <div class="small muted" style="margin-top:6px">Spent from ${esc(c.volunteer_name)}'s transparent card and proven · ${t.accounted_at ? when(t.accounted_at) : ""}</div>`;
+      <div class="xs muted mt-8">Spent from ${esc(c.volunteer_name)}'s transparent card and proven · ${t.accounted_at ? when(t.accounted_at) : ""}</div>`;
     else if (p.state === "released") body = `<div class="t-sum">On ${esc(c.volunteer_name)}'s transparent card now. Every payment from it shows up here, checked by the AI auditor.</div>
       ${t.payments && t.payments.length ? `<ul class="txs">${t.payments.map((x) => txHtml(x)).join("")}</ul>` : ""}`;
-    else body = `<div class="t-sum">Held on PayPal. Nobody has this money yet — it goes to the card when the tranches before it are spent and proven.</div>`;
-    return `<li class="${p.state}"><div class="n">${p.state === "accounted" ? "✓" : "•"}</div><div class="t-head"><div><b>${esc(p.title)}</b> ${badge(p.state)}</div><div class="t-amt">${money(p.amount)}</div></div>${body}</li>`;
+    else body = `<div class="t-sum">Held on PayPal. Nobody has this money yet. It goes to the card when the budget lines before it are spent and proven.</div>`;
+    return `<li class="${p.state}"><div class="n">${p.state === "accounted" ? ph("check") : ph("circle")}</div><div class="t-head"><div><b>${esc(p.title)}</b> ${badge(p.state)}</div><div class="t-amt">${money(p.amount)}</div></div>${body}</li>`;
   };
-  $("#app").innerHTML = header("") + `
-  <section style="padding:30px 0 20px"><div class="eyebrow">Your donation</div>
-    <h1 class="display" style="margin-top:10px">${money(d.amount)} <span style="font-size:.5em;color:var(--muted)">to</span></h1>
-    <p class="lead" style="margin-top:6px"><a href="/c/${c.id}">${icon(c)} ${esc(c.title)}</a> · ${esc(c.place)}</p>
-    <p class="small muted">${d.donor_name ? esc(d.donor_name) + " · " : ""}${when(d.created)} · PayPal capture <span class="mono">${esc(d.id)}</span></p></section>
+  $("#app").innerHTML = header("") + `<main id="main">
+  <section class="page-head"><div class="eyebrow">Your donation</div>
+    <h1 class="display">${money(d.amount)} to ${esc(c.title)}</h1>
+    <p class="lead">${icon(c)} <a href="/c/${c.id}">Open the campaign page</a> · ${esc(c.place)}</p>
+    <p class="small muted mt-8">${d.donor_name ? esc(d.donor_name) + " · " : ""}${when(d.created)} · PayPal capture <span class="mono">${esc(d.id)}</span></p></section>
   <div class="two">
-    <div class="card">${c.status === "frozen" ? `<div class="note bad" style="margin-bottom:14px"><b>⛔ Spending frozen:</b> ${esc(c.frozen_reason || "")}. Your held share goes back to you.</div>` : ""}
-      <h3>Where your money is now</h3><p class="small muted" style="margin:2px 0 18px">Donations fill the tranches in order. This is the part that is yours.</p>
+    <div class="card">${c.status === "frozen" ? `<div class="note bad mb-16">${ph("snowflake")}<b>Spending frozen:</b> ${esc(c.frozen_reason || "")}. Your held share goes back to you.</div>` : ""}
+      <h3>Where your money is now</h3><p class="small muted mt-4 mb-16">Donations fill the budget lines in order. This is the part that is yours.</p>
       <ol class="timeline">${r.parts.map(partHtml).join("")}</ol></div>
-    <div class="sticky">
+    <aside class="sticky" aria-label="Campaign">
       <div class="card"><h3>The whole campaign</h3>${moneyBar(r.totals)}</div>
-      ${cfg.bot ? `<div class="card"><h3>Get the photo when it's spent</h3><p class="small muted" style="margin:6px 0 12px">Telegram sends you the proof the moment your money is released.</p>
-        <a class="btn ghost" href="https://t.me/${cfg.bot}?start=follow_${c.id}">Follow in Telegram</a></div>` : ""}
-      <div class="card"><h3>Keep this link</h3><p class="small muted" style="margin:6px 0 0">This page always shows what happened to your money.</p></div>
-    </div>
-  </div>` + footer(cfg);
-})();
+      ${cfg.bot ? `<div class="card"><h3>Get the photo when it is spent</h3><p class="small muted mt-4 mb-12">Telegram sends you the proof the moment your money is released.</p>
+        <a class="btn ghost" href="https://t.me/${cfg.bot}?start=follow_${c.id}">${ph("telegram-logo")}Follow in Telegram</a></div>` : ""}
+      <div class="card"><h3>Keep this link</h3><p class="small muted mt-4">This page always shows what happened to your money.</p></div>
+    </aside>
+  </div></main>` + footer(cfg);
+})().catch(failPage);
 </script>
 </body>
 </html>

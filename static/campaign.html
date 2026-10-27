@@ -3,93 +3,112 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Proof of Good — campaign</title>
+<title>Campaign · Proof of Good</title>
+<meta name="description" content="A Proof of Good campaign: donations wait on PayPal and reach the volunteer one budget line at a time, on a transparent card checked by AI.">
+<meta name="robots" content="noindex">
+<meta property="og:title" content="A campaign on Proof of Good">
+<meta property="og:image" content="/static/og.png">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-<div class="wrap" id="app"><p class="muted" style="padding:40px 0">Loading…</p></div>
+<a class="skip" href="#main">Skip to content</a>
+<div class="wrap" id="app"></div>
 <script src="/static/app.js"></script>
 <script>
 const cid = location.pathname.split("/").pop();
 let amount = 20;
 
-const barCard = (c) => moneyBar(c.totals) + `<div class="small muted" style="margin-top:8px">${c.totals.donors} donation${c.totals.donors === 1 ? "" : "s"} · the money reaches the volunteer one tranche at a time · what is still held goes back if the money is misused</div>`;
+const barCard = (c) => moneyBar(c.totals) + `<p class="small muted mt-8">${c.totals.donors} donation${c.totals.donors === 1 ? "" : "s"} · the money reaches the volunteer one budget line at a time · what is still held goes back if the money is misused</p>`;
 const cardCard = (c) => `<h3>The transparent card</h3>
-  <p class="small muted" style="margin:2px 0 14px">${esc(c.volunteer_name)} pays only with ${esc(c.card_label || "the campaign card")}. The bank reports every payment, and the AI auditor checks it the moment it happens.</p>
-  ${c.card_feed && c.card_feed.length ? `<ul class="txs">${c.card_feed.map((t) => txHtml(t)).join("")}</ul>` : `<p class="muted small">No card payments yet.</p>`}`;
-const ledgerCard = (c) => `<h3 style="margin-bottom:14px">Public ledger</h3>${feedHtml(c.ledger)}<p class="small" style="margin:14px 0 0"><a href="/ledger">All campaigns in one table →</a></p>`;
+  <p class="small muted mt-4 mb-16">${esc(c.volunteer_name)} pays only with ${esc(c.card_label || "the campaign card")}. The bank reports every payment, and the AI auditor checks it the moment it happens.</p>
+  ${c.card_feed && c.card_feed.length ? `<ul class="txs">${c.card_feed.map((t) => txHtml(t)).join("")}</ul>`
+    : emptyHtml("credit-card", "No card payments yet", "Each payment from the card shows up here within seconds, with the AI check next to it.")}`;
+const ledgerCard = (c) => `<h3 class="mb-16">Public ledger</h3>${feedHtml(c.ledger)}<p class="small mt-16"><a href="/ledger">All campaigns in one table →</a></p>`;
 
 async function render() {
   const [cfg, c] = await Promise.all([config(), api("/api/campaigns/" + cid)]);
-  document.title = c.title + " — Proof of Good";
+  document.title = c.title + " · Proof of Good";
   const closed = c.status !== "active";
-  $("#app").innerHTML = header("home") + `
-  <section style="padding:26px 0 22px">
+  $("#app").innerHTML = header("campaigns") + `<main id="main">
+  <section class="page-head">
     <div class="camp-icon">${icon(c)}</div>
-    <div class="small muted">📍 ${esc(c.place)} · volunteer ${esc(c.volunteer_name)} · 💳 ${esc(c.card_label || "")}
-      ${closed ? ` · <span class="badge ${c.status === "completed" ? "ok" : "bad"}">${c.status}</span>` : ""}</div>
-    <h1 class="display" style="margin-top:8px;font-size:clamp(30px,4.4vw,48px)">${esc(c.title)}</h1>
-    <p class="lead" style="margin-top:14px">${esc(c.story)}</p>
+    <div class="small muted meta"><span>${ph("map-pin")} ${esc(c.place)}</span><span>· volunteer ${esc(c.volunteer_name)}</span><span>· ${ph("credit-card")} ${esc(c.card_label || "")}</span>
+      ${closed ? `<span class="badge ${c.status === "completed" ? "ok" : "bad"}">${c.status}</span>` : ""}</div>
+    <h1 class="display">${esc(c.title)}</h1>
+    <p class="lead">${esc(c.story)}</p>
   </section>
   ${frozenBanner(c)}
   <div class="two">
     <div>
       <div class="card" id="c-bar">${barCard(c)}</div>
-      <div class="card"><h3>Where the money goes</h3><p class="small muted" style="margin:2px 0 18px">One tranche at a time goes to the card. The next one comes only after the last one is spent on the purpose and proven with a photo.</p>
+      <div class="card"><h3>Where the money goes</h3><p class="small muted mt-4 mb-16">One budget line at a time goes to the card. The next one comes only after the last one is spent on the purpose and proven with a photo.</p>
         <ol class="timeline" id="c-tranches">${c.tranches.map(trancheHtml).join("")}</ol></div>
       <div class="card" id="c-card">${cardCard(c)}</div>
       <div class="card" id="c-ledger">${ledgerCard(c)}</div>
     </div>
-    <div class="sticky">
+    <aside class="sticky" aria-label="Donate">
       <div class="card" id="donate">
         <h3>Donate</h3>
-        ${closed ? `<p class="muted">This campaign is ${c.status}.</p>` : `
-        <div class="amounts">${[5, 10, 20, 50, 100].map((v) => `<button data-v="${v}" class="${v === amount ? "on" : ""}">$${v}</button>`).join("")}</div>
-        <label class="f" for="amt">Or any amount (USD)</label><input id="amt" type="number" min="1" max="10000" value="${amount}">
-        <div id="paypal-buttons" style="margin-top:16px;min-height:50px"></div>
-        <p class="small muted" style="margin:6px 0 12px">Pay with PayPal or any bank card. The money is <b>held</b> on PayPal and goes to ${esc(c.volunteer_name)}'s transparent card one tranche at a time.</p>
-        ${cfg.sandbox_buyer ? `<div class="note"><b>Judges / testers:</b> this is the PayPal sandbox — no real money. In the PayPal window log in with the test buyer<br><span class="mono">${esc(cfg.sandbox_buyer)}</span></div>` : ""}
-        <div id="thanks" style="margin-top:12px"></div>`}
+        ${closed ? `<p class="muted mt-8">This campaign is ${c.status}, so it takes no more donations.</p>` : `
+        <div class="amounts" role="group" aria-label="Amount">${[5, 10, 20, 50, 100].map((v) => `<button type="button" data-v="${v}" class="${v === amount ? "on" : ""}" aria-pressed="${v === amount}">$${v}</button>`).join("")}</div>
+        <label class="f" for="amt">Or any amount in USD</label><input id="amt" type="number" min="1" max="10000" step="1" value="${amount}" inputmode="decimal" required aria-describedby="amt-err">
+        <div id="amt-err" class="field-err" role="alert"></div>
+        <div id="paypal-buttons" class="mt-16"></div>
+        <p class="small muted mt-8">Pay with PayPal or any bank card. The money is <b>held</b> on PayPal and goes to ${esc(c.volunteer_name)}'s transparent card one budget line at a time.</p>
+        ${cfg.sandbox_buyer ? `<div class="note mt-12"><b>Judges and testers:</b> this is the PayPal sandbox, so no real money moves. In the PayPal window log in with the test buyer<br><span class="mono">${esc(cfg.sandbox_buyer)}</span></div>` : ""}
+        <div id="thanks" class="mt-12" aria-live="polite"></div>`}
       </div>
-      ${c.try_it ? `<div class="card"><h3>Test it end to end</h3><p class="small muted" style="margin:6px 0 12px">1. Donate $10. 2. Open the volunteer portal with the code <span class="mono">TRY-IT</span>: pay with the demo card, then send a photo of any bottle of water. 3. Try to cheat with the card.</p>
-        <a class="btn ghost" href="/volunteer?code=TRY-IT">Volunteer portal</a></div>` : ""}
+      ${c.try_it ? `<div class="card"><h3>Test it end to end</h3><ol class="howto small muted"><li>Donate $10.</li>
+        <li>Open the volunteer portal with the code <span class="mono">TRY-IT</span>, pay with the demo card, then send a photo of any bottle of water.</li><li>Try to cheat with the card.</li></ol>
+        <a class="btn ghost mt-12" href="/volunteer?code=TRY-IT">Open the volunteer portal</a></div>` : ""}
       ${cfg.bot ? `<div class="card"><h3>Follow in Telegram</h3>
-        <p class="small muted" style="margin:6px 0 12px">Get a message when money is released, and the photo when it is proven spent.</p>
-        <a class="btn ghost" href="https://t.me/${cfg.bot}?start=follow_${c.id}">Follow in Telegram</a></div>` : ""}
-    </div>
-  </div>` + footer(cfg);
+        <p class="small muted mt-4 mb-12">Get a message when money is released, and the photo when it is proven spent.</p>
+        <a class="btn ghost" href="https://t.me/${cfg.bot}?start=follow_${c.id}">${ph("telegram-logo")}Follow in Telegram</a></div>` : ""}
+    </aside>
+  </div></main>` + footer(cfg);
   if (!closed) {
-    const sync = () => $$(".amounts button").forEach((x) => x.classList.toggle("on", +x.dataset.v === amount));
-    $$(".amounts button").forEach((b) => (b.onclick = () => { amount = +b.dataset.v; $("#amt").value = amount; sync(); }));
-    $("#amt").oninput = () => { amount = +$("#amt").value || 0; sync(); };
+    const sync = () => $$(".amounts button").forEach((x) => { const on = +x.dataset.v === amount; x.classList.toggle("on", on); x.setAttribute("aria-pressed", on); });
+    $$(".amounts button").forEach((b) => (b.onclick = () => { amount = +b.dataset.v; $("#amt").value = amount; sync(); valid(); }));
+    $("#amt").oninput = () => { amount = +$("#amt").value || 0; sync(); valid(); };
     loadPayPal(cfg);
   }
+}
+
+// the amount box: checked as the donor types, and again before PayPal opens
+function valid() {
+  const ok = amount >= 1 && amount <= 10000;
+  $("#amt-err").textContent = ok ? "" : "Enter an amount from $1 to $10,000.";
+  $("#amt").setAttribute("aria-invalid", !ok);
+  return ok;
 }
 
 function loadPayPal(cfg) {
   const mount = () => window.paypal.Buttons({
     style: { layout: "vertical", color: "gold", shape: "rect", label: "donate", height: 48 },
-    createOrder: async () => {
-      if (!(amount >= 1)) throw new Error("Enter an amount of at least $1");
-      return (await api(`/api/campaigns/${cid}/orders`, { method: "POST", body: JSON.stringify({ amount }) })).id;
-    },
+    onClick: (data, actions) => (valid() ? actions.resolve() : actions.reject()),
+    createOrder: async () => (await api(`/api/campaigns/${cid}/orders`, { method: "POST", body: JSON.stringify({ amount }) })).id,
     onApprove: async (data) => {
-      $("#thanks").innerHTML = `<div class="note"><span class="spinner"></span>Capturing your donation…</div>`;
+      $("#thanks").innerHTML = `<div class="note"><span class="busy"></span>Capturing your donation…</div>`;
       try {
         const r = await api(`/api/orders/${data.orderID}/capture`, { method: "POST" });
         const id = r.donation.capture_id;
-        $("#thanks").innerHTML = `<div class="note ok">💙 <b>Thank you${r.donation.payer_name ? ", " + esc(r.donation.payer_name) : ""}!</b>
+        $("#thanks").innerHTML = `<div class="note ok">${ph("check-circle")}<b>Thank you${r.donation.payer_name ? ", " + esc(r.donation.payer_name) : ""}.</b>
           ${money(r.donation.amount)} is held for this campaign and reaches the volunteer only through the transparent card.<br>
           <a href="/d/${id}"><b>Track where your money goes →</b></a></div>`;
         setTimeout(refresh, 600);
-      } catch (e) { $("#thanks").innerHTML = `<div class="note bad">⚠️ ${esc(e.message)}</div>`; }
+      } catch (e) {
+        $("#thanks").innerHTML = `<div class="note bad">${ph("warning")}The donation was not confirmed: ${esc(e.message)}. Reload the page to see whether it arrived, or try again.</div>`;
+      }
     },
-    onError: (e) => { $("#thanks").innerHTML = `<div class="note bad">⚠️ PayPal: ${esc(e.message || e)}</div>`; },
+    onError: (e) => { $("#thanks").innerHTML = `<div class="note bad">${ph("warning")}PayPal stopped: ${esc(e.message || e)}. Try again, or reload the page.</div>`; },
   }).render("#paypal-buttons");
   if (window.paypal) return mount();
   const s = document.createElement("script");
-  s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.paypal_client_id)}&currency=USD&intent=capture&components=buttons&enable-funding=card&disable-funding=credit,paylater,venmo`;
+  s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.paypal_client_id)}&currency=USD&intent=capture&components=buttons&enable-funding=card&disable-funding=credit,paylater,venmo&locale=en_US`;
   s.onload = mount;
+  s.onerror = () => { $("#paypal-buttons").innerHTML = `<div class="note bad">${ph("warning")}The PayPal buttons did not load. Check that nothing blocks paypal.com, then reload the page.</div>`; };
   document.head.appendChild(s);
 }
 
@@ -101,8 +120,8 @@ async function refresh() {
   $("#c-card").innerHTML = cardCard(c);
   $("#c-ledger").innerHTML = ledgerCard(c);
 }
-render();
-setInterval(() => document.visibilityState === "visible" && refresh().catch(() => {}), 8000);
+render().catch(failPage);
+setInterval(() => document.visibilityState === "visible" && $("#c-bar") && refresh().catch(() => {}), 8000);
 </script>
 </body>
 </html>

@@ -3,48 +3,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Proof of Good — volunteer portal</title>
+<title>Volunteer portal · Proof of Good</title>
+<meta name="description" content="The Proof of Good volunteer portal: spend with the transparent card, prove each budget line with a photo, get the next one.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
 <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 <div class="wrap" id="app"></div>
 <script src="/static/app.js"></script>
 <script>
 let camp = null, code = new URLSearchParams(location.search).get("code") || "", cfg = null;
 const files = { photo: null, receipt: null };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const SIM_ICON = { store: "🛒", np: "📦", atm: "🏧", p2p: "💸", food: "🍽️" };
+const SIM_ICON = { store: "shopping-cart", np: "package", atm: "money", p2p: "arrows-left-right", food: "fork-knife" };
 
 async function login() {
   cfg = await config();
-  $("#app").innerHTML = header("volunteer") + `
-  <section style="padding:30px 0 22px"><div class="eyebrow">For volunteers</div>
-    <h1 class="display" style="margin-top:10px;font-size:clamp(30px,4.4vw,48px)">Spend with the card. Prove with a photo.</h1>
-    <p class="lead" style="margin-top:12px">Donations reach you one tranche at a time on your transparent card. Pay only with that card — every payment is checked as it happens — then send a photo of what you bought, and the next tranche comes.</p></section>
-  <div class="card" style="max-width:520px">
-    <label class="f" for="code" style="margin-top:0">Campaign code</label><input id="code" placeholder="e.g. TRY-IT" value="${esc(code)}" autocomplete="off">
-    <p class="small muted" style="margin:8px 0 14px">Test campaign for judges: <span class="mono">TRY-IT</span> · others: <span class="mono">GEN-2026</span> · <span class="mono">WARM-12</span> · <span class="mono">PAWS-80</span></p>
-    <button class="btn" id="go">Open my campaign</button><div id="err" class="small" style="color:var(--red);margin-top:10px"></div>
-  </div>` + footer(cfg);
-  $("#go").onclick = async () => {
+  $("#app").innerHTML = header("volunteer") + `<main id="main">
+  <section class="page-head"><div class="eyebrow">For volunteers</div>
+    <h1 class="display">Spend with the card.<br>Prove with a photo.</h1>
+    <p class="lead">Donations reach you one budget line at a time on your transparent card. Pay only with that card and every payment is checked as it happens. Then send a photo of what you bought, and the next line comes.</p></section>
+  <form class="card narrow" id="login" novalidate>
+    <label class="f mt-0" for="code">Campaign code</label><input id="code" placeholder="For example TRY-IT" value="${esc(code)}" autocomplete="off" required aria-describedby="err">
+    <p class="small muted mt-8 mb-16">Test campaign for judges: <span class="mono">TRY-IT</span> · others: <span class="mono">GEN-2026</span> · <span class="mono">WARM-12</span> · <span class="mono">PAWS-80</span></p>
+    <button class="btn" id="go" type="submit">Open my campaign</button><div id="err" class="field-err" role="alert"></div>
+  </form></main>` + footer(cfg);
+  $("#login").onsubmit = async (e) => {
+    e.preventDefault();
     code = $("#code").value.trim().toUpperCase();
+    $("#code").setAttribute("aria-invalid", !code);
+    if (!code) { $("#err").textContent = "Enter the campaign code from your volunteer invite."; return; }
+    $("#go").disabled = true;
     try { camp = await api("/api/volunteer/login", { method: "POST", body: JSON.stringify({ code }) }); portal(); }
-    catch (e) { $("#err").textContent = e.message; }
+    catch (er) {
+      $("#err").textContent = er.message === "No campaign with this code" ? "No campaign has this code. Check it and try again." : er.message;
+      $("#code").setAttribute("aria-invalid", "true"); $("#go").disabled = false;
+    }
   };
-  $("#code").onkeydown = (e) => { if (e.key === "Enter") $("#go").click(); };
   if (code) $("#go").click();
 }
 
 function dropHtml(kind, title, hint) {
-  return `<label class="drop" id="drop-${kind}"><input type="file" accept="image/*" data-kind="${kind}">
-    <div class="thumb">${kind === "receipt" ? "🧾" : "📷"}</div><div><b>${title}</b><span>${hint}</span></div></label>`;
+  return `<label class="drop" id="drop-${kind}"><input type="file" id="in-${kind}" accept="image/*" data-kind="${kind}">
+    <span class="thumb">${ph(kind === "receipt" ? "receipt" : "camera")}</span><span><b>${title}</b><span class="hint">${hint}</span></span></label>`;
 }
 
 function setFile(kind, file) {
   files[kind] = file;
   const th = $(`#drop-${kind} .thumb`);
   th.style.backgroundImage = `url(${URL.createObjectURL(file)})`; th.textContent = "";
-  $(`#drop-${kind} span`).textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
+  $(`#drop-${kind} .hint`).textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
 }
 
 async function loadSample(s) {
@@ -56,88 +67,93 @@ async function loadSample(s) {
 }
 
 function cardBox(c) {
-  const cur = c.tranches.find((t) => t.status === "released");
+  const cur = c.tranches.find((t) => t.status === "released"), next = c.tranches.find((t) => t.status === "waiting");
   const onCard = cur ? cur.amount - cur.spent : 0;
-  return `<div class="cardface"><div class="lbl">Transparent card · ${c.card_mode === "demo" ? "demo bank feed" : "Monobank, read-only"}</div>
+  return `<div class="cardface"><div class="lbl">Transparent card · ${c.card_mode === "demo" ? "demo bank feed" : "Monobank, read only"}</div>
       <div class="num">${esc(c.card_label || "")}</div>
-      <div class="bal">${cur ? money(onCard) : "$0.00"}</div><div class="small" style="opacity:.8">${cur ? `left of ${money(cur.amount)} for «${esc(cur.title)}»` : "no tranche on the card"}</div></div>
-    ${c.status === "frozen" ? `<div class="note bad" style="margin-top:12px"><b>⛔ Frozen:</b> ${esc(c.frozen_reason || "")}</div>` : ""}
-    ${c.card_mode === "demo" && c.presets && c.presets.length && c.status === "active" ? `<div class="small muted" style="margin-top:14px">Make the demo card pay — the bank feed reports it like a real card would:</div>
-      <div class="sim">${c.presets.map((p) => `<button data-k="${p.key}" class="${["atm", "p2p", "food"].includes(p.key) ? "bad" : ""}"><span>${SIM_ICON[p.key] || "💳"}</span>${esc(p.label)}</button>`).join("")}</div>
-      <div id="simres" class="small" style="margin-top:10px"></div>` : ""}
-    ${!cur && c.status === "active" ? `<p class="small muted" style="margin-top:12px">${c.tranches.every((t) => t.status === "accounted") ? "Every tranche is spent and proven. 🎉" : `The next tranche is released when ${money((c.tranches.find((t) => t.status === "waiting") || {}).amount || 0)} is donated — <a href="/c/${c.id}">donate on the public page</a>.`}</p>` : ""}`;
+      <div class="bal">${cur ? money(onCard) : "$0.00"}</div><div class="small muted">${cur ? `left of ${money(cur.amount)} for «${esc(cur.title)}»` : "no budget line on the card"}</div></div>
+    ${c.status === "frozen" ? `<div class="note bad mt-12">${ph("snowflake")}<b>Frozen:</b> ${esc(c.frozen_reason || "")}</div>` : ""}
+    ${c.card_mode === "demo" && c.presets && c.presets.length && c.status === "active" ? `<p class="small muted mt-16">Make the demo card pay. The bank feed reports it like a real card would:</p>
+      <div class="sim">${c.presets.map((p) => `<button type="button" data-k="${p.key}" class="${["atm", "p2p", "food"].includes(p.key) ? "bad" : ""}">${ph(SIM_ICON[p.key] || "credit-card")}${esc(p.label)}</button>`).join("")}</div>
+      <div id="simres" class="small mt-12" aria-live="polite"></div>` : ""}
+    ${!cur && c.status === "active" ? `<p class="small muted mt-12">${c.tranches.every((t) => t.status === "accounted") ? "Every budget line is spent and proven."
+      : `The next budget line reaches the card when ${money((next || {}).amount || 0)} is donated. <a href="/c/${c.id}">Donate on the public page</a>.`}</p>` : ""}`;
 }
 
 async function portal() {
   const c = camp, cur = c.tranches.find((t) => t.status === "released");
   const samples = await fetch("/static/samples/index.json").then((r) => r.json()).catch(() => []);
   history.replaceState(null, "", `/volunteer?code=${encodeURIComponent(code)}`);
+  document.title = c.title + " · Volunteer portal · Proof of Good";
   const unclear = cur ? cur.payments.filter((p) => p.status === "unclear").length : 0;
-  $("#app").innerHTML = header("volunteer") + `
-  <section style="padding:26px 0 20px"><div class="small muted">Volunteer ${esc(c.volunteer_name)} · <a href="/c/${c.id}">public page</a> · <a href="#" id="out">switch campaign</a></div>
-    <h1 class="display" style="margin-top:8px;font-size:clamp(28px,4vw,42px)">${esc(c.title)}</h1></section>
+  $("#app").innerHTML = header("volunteer") + `<main id="main">
+  <section class="page-head"><div class="small muted">Volunteer ${esc(c.volunteer_name)} · <a href="/c/${c.id}">public page</a> · <a href="/volunteer" id="out">switch campaign</a></div>
+    <h1 class="display sm">${esc(c.title)}</h1></section>
   <div class="two">
     <div>
-      <div class="card"><h3 style="margin-bottom:14px">Your campaign card</h3><div id="cardbox">${cardBox(c)}</div></div>
+      <div class="card"><h3 class="mb-16">Your campaign card</h3><div id="cardbox">${cardBox(c)}</div></div>
       <div class="card">
-        <h3>Prove the tranche</h3>
-        ${!cur ? `<p class="muted">Nothing to prove right now — no tranche is on the card.</p>` : `
-        <p class="small muted" style="margin:4px 0 0">For «${esc(cur.title)}»: a photo of what you bought, where it is used.${unclear ? ` <b>${unclear} payment${unclear > 1 ? "s" : ""} need${unclear > 1 ? "" : "s"} a receipt</b> — the bank line doesn't say what was bought.` : ""}</p>
-        <label class="f">Photo of the item in place</label>${dropHtml("photo", "Photo of the item where it is used", "an original phone photo keeps its camera date")}
-        <label class="f">Receipt <span class="muted">(only for unclear payments)</span></label>${dropHtml("receipt", "Photo of the receipt", "Nova Poshta, marketplace or shop receipt")}
-        ${samples.length ? `<div class="small muted" style="margin-top:14px">No photo at hand? Try a sample:</div>
-          <div class="samples">${samples.map((s, i) => `<button data-i="${i}" title="${esc(s.note)}">${esc(s.title)}</button>`).join("")}</div>` : ""}
-        <button class="btn block" id="send" style="margin-top:18px">Run the AI audit</button>
-        <div id="audit"></div>`}
+        <h3>Prove the budget line</h3>
+        ${!cur ? `<div class="mt-12">${emptyHtml("camera", "Nothing to prove right now", "No budget line is on the card. When the next one arrives, its photo goes here.")}</div>` : `
+        <p class="small muted mt-4">For «${esc(cur.title)}»: a photo of what you bought, where it is used.${unclear ? ` <b>${unclear} payment${unclear > 1 ? "s" : ""} need${unclear > 1 ? "" : "s"} a receipt</b>, because the bank line does not say what was bought.` : ""}</p>
+        <label class="f" for="in-photo">Photo of the item in place</label>${dropHtml("photo", "Photo of the item where it is used", "An original phone photo keeps its camera date")}
+        <label class="f" for="in-receipt">Receipt <span class="muted">(only for unclear payments)</span></label>${dropHtml("receipt", "Photo of the receipt", "Nova Poshta, marketplace or shop receipt")}
+        ${samples.length ? `<p class="small muted mt-16">No photo at hand? Try a sample:</p>
+          <div class="samples">${samples.map((s, i) => `<button type="button" data-i="${i}" title="${esc(s.note)}">${esc(s.title)}</button>`).join("")}</div>` : ""}
+        <button class="btn block mt-24" id="send" type="button">Run the AI audit</button>
+        <div id="audit" aria-live="polite"></div>`}
       </div>
     </div>
-    <div class="sticky">
+    <aside class="sticky" aria-label="Campaign">
       <div class="card">${moneyBar(c.totals)}</div>
-      <div class="card"><h3 style="margin-bottom:14px">Tranches</h3><ol class="timeline">${c.tranches.map(trancheHtml).join("")}</ol></div>
-      ${c.try_it ? `<div class="card"><h3>Start the test over</h3><p class="small muted" style="margin:6px 0 12px">Refunds the testers' sandbox money and clears this test campaign.</p>
-        <button class="btn ghost" id="reset">Reset the test campaign</button><div id="resetres" class="small" style="margin-top:10px"></div></div>` : ""}
+      <div class="card"><h3 class="mb-16">Budget lines</h3><ol class="timeline">${c.tranches.map(trancheHtml).join("")}</ol></div>
+      ${c.try_it ? `<div class="card"><h3>Start the test over</h3><p class="small muted mt-4 mb-12">Refunds the testers' sandbox money and clears this test campaign.</p>
+        <button class="btn ghost" id="reset" type="button">Reset the test campaign</button><div id="resetres" class="small mt-12" aria-live="polite"></div></div>` : ""}
       <div class="card"><h3>Simulate: the volunteer vanished</h3>
-        <p class="small muted" style="margin:6px 0 12px">Closes the campaign and <b>refunds every donor's share that is still held</b> through PayPal Refunds.</p>
-        <button class="btn danger" id="fail">Refund the held money</button><div id="failres" class="small" style="margin-top:10px"></div></div>
-    </div>
-  </div>` + footer(cfg);
-  $("#out").onclick = (e) => { e.preventDefault(); camp = null; code = ""; history.replaceState(null, "", "/volunteer"); login(); };
+        <p class="small muted mt-4 mb-12">Closes the campaign and <b>refunds every donor's share that is still held</b> through PayPal Refunds.</p>
+        <button class="btn danger" id="fail" type="button">Refund the held money</button><div id="failres" class="small mt-12" aria-live="polite"></div></div>
+    </aside>
+  </div></main>` + footer(cfg);
+  $("#out").onclick = (e) => { e.preventDefault(); camp = null; code = ""; history.replaceState(null, "", "/volunteer"); document.title = "Volunteer portal · Proof of Good"; login(); };
   bindCard();
   $$(".drop input").forEach((inp) => (inp.onchange = () => inp.files[0] && setFile(inp.dataset.kind, inp.files[0])));
   $$(".samples button").forEach((b) => (b.onclick = () => loadSample(samples[+b.dataset.i])));
   if ($("#send")) $("#send").onclick = runAudit;
   if ($("#reset")) $("#reset").onclick = async () => {
-    $("#resetres").innerHTML = `<span class="spinner"></span>Resetting…`;
-    try { await api(`/api/campaigns/${c.id}/reset`, { method: "POST" }); await refresh(); } catch (e) { $("#resetres").textContent = e.message; }
+    $("#resetres").innerHTML = `<span class="busy"></span>Resetting…`;
+    try { await api(`/api/campaigns/${c.id}/reset`, { method: "POST" }); await refresh(); }
+    catch (e) { $("#resetres").textContent = `The reset failed: ${e.message}. Try again in a minute.`; }
   };
   $("#fail").onclick = async () => {
     if (!confirm("Refund every donor's held share and close the campaign?")) return;
-    $("#failres").innerHTML = `<span class="spinner"></span>Refunding through PayPal…`;
+    $("#failres").innerHTML = `<span class="busy"></span>Refunding through PayPal…`;
     try {
       const r = await api(`/api/campaigns/${c.id}/fail`, { method: "POST", body: JSON.stringify({ code, reason: "the volunteer vanished" }) });
-      $("#failres").textContent = `Refunded ${r.refunded.length} donation(s)${r.failed.length ? ", failed " + r.failed.length : ""}.`;
+      $("#failres").textContent = `Refunded ${r.refunded.length} donation${r.refunded.length === 1 ? "" : "s"}${r.failed.length ? `, ${r.failed.length} failed` : ""}.`;
       setTimeout(refresh, 900);
-    } catch (e) { $("#failres").textContent = e.message; }
+    } catch (e) { $("#failres").textContent = `Nothing was refunded: ${e.message}.`; }
   };
 }
 
 function bindCard() {
   $$(".sim button").forEach((b) => (b.onclick = async () => {
     $$(".sim button").forEach((x) => (x.disabled = true));
-    $("#simres").innerHTML = `<span class="spinner"></span>The bank reports the payment, the auditor checks it…`;
+    $("#simres").innerHTML = `<span class="busy"></span>The bank reports the payment and the auditor checks it…`;
     try {
       const t = await api(`/api/campaigns/${camp.id}/card/simulate`, { method: "POST", body: JSON.stringify({ code, key: b.dataset.k }) });
-      const icon = { matched: "✅", unclear: "❔", flagged: "⛔" }[t.status] || "•";
-      $("#simres").innerHTML = `${icon} <b>${t.status}</b> — ${esc(t.reason || "")}`;
+      $("#simres").innerHTML = `${badge(t.status)} ${esc(t.reason || "")}`;
       setTimeout(refresh, 1200);
-    } catch (e) { $("#simres").textContent = e.message; $$(".sim button").forEach((x) => (x.disabled = false)); }
+    } catch (e) {
+      $("#simres").textContent = `The payment was not sent: ${e.message}.`;
+      $$(".sim button").forEach((x) => (x.disabled = false));
+    }
   }));
 }
 
 async function refresh() { camp = await api("/api/volunteer/login", { method: "POST", body: JSON.stringify({ code }) }); files.photo = files.receipt = null; portal(); }
 
 async function runAudit() {
-  if (!files.photo) { $("#audit").innerHTML = `<div class="note" style="margin-top:14px">Add the photo first.</div>`; return; }
+  if (!files.photo) { $("#audit").innerHTML = `<div class="field-err mt-16" role="alert">Add the photo of the item first. A receipt alone does not account for the budget line.</div>`; return; }
   const cur = camp.tranches.find((t) => t.status === "released"), fd = new FormData();
   fd.append("code", code); fd.append("photo", files.photo); if (files.receipt) fd.append("receipt", files.receipt);
   $("#send").disabled = true;
@@ -167,20 +183,20 @@ async function runAudit() {
     closeStage();
     if (s.error) throw new Error(s.error);
     const v = s.result, cls = v.accounted ? "approve" : v.decision === "reject" ? "reject" : "review";
-    const title = v.accounted ? "Accounted for ✓" : v.decision === "reject" ? "Rejected" : "Not yet";
+    const title = v.accounted ? "Accounted for" : v.decision === "reject" ? "Rejected" : "Not yet";
     $(".audit").insertAdjacentHTML("beforeend", `<div class="verdict ${cls}"><h3>${title}</h3>
-      <p style="margin:0 0 8px">${esc(v.message_to_volunteer)}</p>
-      ${v.accounted ? `<p class="small" style="margin:0"><b>Donors see:</b> ${esc(v.summary)}</p>` : ""}
-      ${v.released ? `<p class="small" style="margin:8px 0 0">💸 Next tranche on your card: <b>${money(v.released.amount)}</b> for «${esc(v.released.title)}».</p>` : ""}
-      <p class="small" style="margin:10px 0 0"><a href="#" id="again">Back to the card →</a></p></div>`);
+      <p>${esc(v.message_to_volunteer)}</p>
+      ${v.accounted ? `<p class="small"><b>Donors see:</b> ${esc(v.summary)}</p>` : ""}
+      ${v.released ? `<p class="small">Next budget line on your card: <b>${money(v.released.amount)}</b> for «${esc(v.released.title)}».</p>` : ""}
+      <p class="small"><button class="linkbtn" id="again" type="button">Back to the card →</button></p></div>`);
     $(".audit").classList.add("done");
-    $("#again").onclick = (e) => { e.preventDefault(); refresh(); };
+    $("#again").onclick = refresh;
   } catch (e) {
-    $(".audit").insertAdjacentHTML("beforeend", `<div class="verdict reject"><h3>Something went wrong</h3><p style="margin:0">${esc(e.message)}</p></div>`);
+    $(".audit").insertAdjacentHTML("beforeend", `<div class="verdict reject" role="alert"><h3>The audit did not finish</h3><p>${esc(e.message)}. Send the photo again in a minute.</p></div>`);
     $(".audit").classList.add("done");
   } finally { clearInterval(timer); if ($("#send")) $("#send").disabled = false; }
 }
-login();
+login().catch(failPage);
 </script>
 </body>
 </html>
