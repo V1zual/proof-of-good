@@ -22,7 +22,7 @@ const cid = location.pathname.split("/").pop();
 let amount = 20;
 
 const cardName = (c) => esc(tr(c.card_label || L("the campaign card")));
-const barCard = (c) => moneyBar(c.totals) + `<p class="small muted mt-8">${c.totals.donors} ${plural(c.totals.donors, ["donation", "donations"], ["пожертва", "пожертви", "пожертв"], ["пожертвование", "пожертвования", "пожертвований"])} · ${L("the money reaches the volunteer one budget line at a time")} · ${L("what is still held goes back if the money is misused")}</p>`;
+const barCard = (c) => moneyBar(c.totals) + `<p class="small muted mt-8">${c.totals.donors} ${plural(c.totals.donors, ["donation", "donations"], ["пожертва", "пожертви", "пожертв"])} · ${L("the money reaches the volunteer one budget line at a time")} · ${L("what is still held goes back if the money is misused")}</p>`;
 const cardCard = (c) => `<h3>${L("The transparent card")}</h3>
   <p class="small muted mt-4 mb-16">${L("{name} pays only with {card}. The bank reports every payment, and the AI auditor checks it the moment it happens.", { name: esc(tr(c.volunteer_name)), card: cardName(c) })}</p>
   ${c.card_feed && c.card_feed.length ? `<ul class="txs">${c.card_feed.map((t) => txHtml(t)).join("")}</ul>`
@@ -107,9 +107,9 @@ function loadPayPal(cfg) {
     onError: (e) => { $("#thanks").innerHTML = `<div class="note bad">${ph("warning")}${L("PayPal stopped: {msg}. Try again, or reload the page.", { msg: esc(e.message || e) })}</div>`; },
   }).render("#paypal-buttons");
   if (window.paypal) return mount();
-  // PayPal has no Ukrainian buttons: Ukrainian visitors get English ones, Russian visitors Russian ones
+  // PayPal has no Ukrainian buttons, so the Ukrainian site shows English ones
   const s = document.createElement("script");
-  s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.paypal_client_id)}&currency=USD&intent=capture&components=buttons&enable-funding=card&disable-funding=credit,paylater,venmo&locale=${LANG === "ru" ? "ru_UA" : "en_US"}`;
+  s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.paypal_client_id)}&currency=USD&intent=capture&components=buttons&enable-funding=card&disable-funding=credit,paylater,venmo&locale=en_US`;
   s.onload = mount;
   s.onerror = () => { $("#paypal-buttons").innerHTML = `<div class="note bad">${ph("warning")}${L("The PayPal buttons did not load. Check that nothing blocks paypal.com, then reload the page.")}</div>`; };
   document.head.appendChild(s);

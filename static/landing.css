@@ -89,11 +89,11 @@ section { padding: 96px 0; }
 /* "See every payment." is 338px wide at 36px; narrow phones get the next step down so each sentence keeps one line */
 @media (max-width: 420px) { .hero h1 { font-size: 30px; line-height: 36px; } }
 
-/* Ukrainian and Russian lines run 15 to 25% wider than English: one type step down keeps each sentence on one line */
-:lang(uk) .hero h1, :lang(ru) .hero h1 { font-size: 48px; line-height: 1; }
-@media (max-width: 640px) { :lang(uk) .hero h1, :lang(ru) .hero h1 { font-size: 30px; line-height: 36px; } }
-@media (max-width: 420px) { :lang(uk) .hero h1, :lang(ru) .hero h1 { font-size: 24px; line-height: 32px; } }
-:lang(uk) .tagline p, :lang(ru) .tagline p { font-size: 36px; line-height: 40px; }
+/* Ukrainian lines run 15 to 25% wider than English: one type step down keeps each sentence on one line */
+:lang(uk) .hero h1 { font-size: 48px; line-height: 1; }
+@media (max-width: 640px) { :lang(uk) .hero h1 { font-size: 30px; line-height: 36px; } }
+@media (max-width: 420px) { :lang(uk) .hero h1 { font-size: 24px; line-height: 32px; } }
+:lang(uk) .tagline p { font-size: 36px; line-height: 40px; }
 
 /* product replay panel */
 .replay { border: 1px solid var(--line); border-radius: 24px; background: var(--surface); padding: 16px; }

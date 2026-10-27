@@ -88,8 +88,7 @@ async function portal() {
   history.replaceState(null, "", `/volunteer?code=${encodeURIComponent(code)}`);
   document.title = tr(c.title) + " · " + L("Volunteer portal") + " · Proof of Good";
   const unclear = cur ? cur.payments.filter((p) => p.status === "unclear").length : 0;
-  const needs = plural(unclear, ["payment needs a receipt", "payments need a receipt"], ["платіж потребує чека", "платежі потребують чека", "платежів потребують чека"],
-    ["платёж требует чека", "платежа требуют чека", "платежей требуют чека"]);
+  const needs = plural(unclear, ["payment needs a receipt", "payments need a receipt"], ["платіж потребує чека", "платежі потребують чека", "платежів потребують чека"]);
   $("#app").innerHTML = header("volunteer") + `<main id="main">
   <section class="page-head"><div class="small muted">${L("Volunteer {name} · {a}public page{z} · {b}switch campaign{z}",
     { name: esc(tr(c.volunteer_name)), a: `<a href="/c/${c.id}">`, b: '<a href="/volunteer" id="out">', z: "</a>" })}</div>
@@ -135,8 +134,8 @@ async function portal() {
     try {
       const r = await api(`/api/campaigns/${c.id}/fail`, { method: "POST", body: JSON.stringify({ code, reason: "the volunteer vanished" }) });
       const n = r.refunded.length;
-      $("#failres").textContent = plural(n, ["Refunded", "Refunded"], ["Повернуто", "Повернуто", "Повернуто"], ["Возвращено", "Возвращено", "Возвращено"]) + ` ${n} `
-        + plural(n, ["donation", "donations"], ["пожертву", "пожертви", "пожертв"], ["пожертвование", "пожертвования", "пожертвований"])
+      $("#failres").textContent = plural(n, ["Refunded", "Refunded"], ["Повернуто", "Повернуто", "Повернуто"]) + ` ${n} `
+        + plural(n, ["donation", "donations"], ["пожертву", "пожертви", "пожертв"])
         + (r.failed.length ? `, ${L("{n} failed", { n: r.failed.length })}` : "") + ".";
       setTimeout(refresh, 900);
     } catch (e) { $("#failres").textContent = L("Nothing was refunded: {msg}.", { msg: e.message }); }

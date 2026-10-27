@@ -233,24 +233,24 @@ async def api_rate():
     return {"USD": await audit.uah_rate("USD"), "source": "National Bank of Ukraine"}
 
 
-# ---------- live texts in Ukrainian and Russian ----------
+# ---------- live texts in Ukrainian ----------
 
 TRANSLATED: dict[tuple[str, str], str] = {}  # (lang, English text) -> translation, shared by every visitor
 _tr_lock = asyncio.Lock()
 _tr_calls: list[float] = []
-LANG_NAMES = {"uk": "Ukrainian", "ru": "Russian"}
+LANG_NAMES = {"uk": "Ukrainian"}
 TR_SCHEMA = {"type": "OBJECT", "properties": {"items": {"type": "ARRAY", "items": {"type": "STRING"}}},
              "required": ["items"]}
 
 
 @app.post("/api/translate")
 async def api_translate(body: dict):
-    """Server texts the page shows (ledger lines, AI verdicts, bank categories) for the Ukrainian and Russian site.
+    """Server texts the page shows (ledger lines, AI verdicts, bank categories) for the Ukrainian site.
     The page asks only for strings it has not seen; answers are cached for every visitor, and Gemini is called at
     most 20 times a minute so the auditor keeps its quota. Strings that could not be translated are left out."""
     lang = body.get("lang")
     if lang not in LANG_NAMES:
-        raise HTTPException(400, "lang must be uk or ru")
+        raise HTTPException(400, "lang must be uk")
     texts = list(dict.fromkeys(s for s in (str(x)[:600] for x in (body.get("texts") or [])[:60]) if s.strip()))
     async with _tr_lock:
         missing = [s for s in texts if (lang, s) not in TRANSLATED]
