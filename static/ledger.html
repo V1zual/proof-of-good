@@ -14,21 +14,21 @@
 (async () => {
   const [cfg, rows] = await Promise.all([config(), api("/api/ledger")]);
   const total = (kind) => rows.filter((r) => r.kind === kind).reduce((s, r) => s + (r.amount || 0), 0);
-  const inflow = total("donation"), out = total("payout"), back = total("refund");
+  const inflow = total("donation"), out = total("release"), back = total("refund");
   const campaigns = [...new Set(rows.map((r) => r.campaign))];
   $("#app").innerHTML = header("ledger") + `
   <section style="padding:30px 0 20px"><div class="eyebrow">Public ledger</div>
     <h1 class="display" style="margin-top:10px">Every dollar, in public.</h1>
-    <p class="lead" style="margin-top:12px">Each donation, proof, AI verdict, payout and refund — with the real PayPal transaction ids.</p></section>
+    <p class="lead" style="margin-top:12px">Each donation, release to a card, card payment, AI verdict, freeze and refund — with the real PayPal and bank ids.</p></section>
   <div class="stats" style="margin-bottom:18px">
-    <div><b>${money0(inflow)}</b><span>donated</span></div><div><b>${money0(out)}</b><span>released after proof</span></div>
+    <div><b>${money0(inflow)}</b><span>donated</span></div><div><b>${money0(out)}</b><span>released to cards</span></div>
     <div><b>${money0(back)}</b><span>refunded</span></div><div><b>${money0(inflow - out - back)}</b><span>held right now</span></div>
   </div>
   <div class="card" style="padding:14px">
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
       <input id="q" placeholder="Search: a name, an amount, a PayPal id…" style="flex:1;min-width:220px">
       <select id="camp" style="width:auto"><option value="">All campaigns</option>${campaigns.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
-      <select id="kind" style="width:auto"><option value="">All events</option><option value="donation">Donations</option><option value="payout">Payouts</option><option value="refund">Refunds</option><option value="verdict">AI verdicts</option><option value="proof">Proofs</option></select>
+      <select id="kind" style="width:auto"><option value="">All events</option><option value="donation">Donations</option><option value="release">Releases to the card</option><option value="card">Card payments</option><option value="flag">Freezes</option><option value="refund">Refunds</option><option value="verdict">AI verdicts</option><option value="proof">Proofs</option></select>
       <button class="btn ghost" id="csv">Download CSV</button>
     </div>
     <div id="grid"></div>
@@ -39,8 +39,8 @@
   const theme = agGrid.themeQuartz.withParams(dark
     ? { backgroundColor: "#1d232b", foregroundColor: "#eef1f4", headerBackgroundColor: "#1a1f26", borderColor: "#2b333d", accentColor: "#39c08c", fontFamily: "Inter, sans-serif" }
     : { backgroundColor: "#fffdf8", foregroundColor: "#1d2733", headerBackgroundColor: "#f5f1e8", borderColor: "#e3dccd", accentColor: "#0b6e4f", fontFamily: "Inter, sans-serif" });
-  const icon = { donation: "💙", proof: "📎", verdict: "🤖", payout: "💸", refund: "↩️", note: "📝" };
-  const color = { payout: "var(--green)", refund: "var(--red)", donation: "var(--ink)" };
+  const icon = { donation: "💙", release: "💸", card: "💳", flag: "⛔", proof: "📎", verdict: "🤖", refund: "↩️", note: "📝" };
+  const color = { release: "var(--blue)", card: "var(--ink)", verdict: "var(--green)", refund: "var(--red)", donation: "var(--ink)" };
   let kind = "", camp = "";
   const api_ = agGrid.createGrid(document.getElementById("grid"), {
     theme, rowData: rows,
@@ -61,7 +61,7 @@
     onModelUpdated: (e) => {
       const shown = []; e.api.forEachNodeAfterFilter((n) => shown.push(n.data));
       const sum = (k) => shown.filter((r) => r.kind === k).reduce((s, r) => s + (r.amount || 0), 0);
-      e.api.setGridOption("pinnedBottomRowData", [{ text: `${shown.length} events · in ${money(sum("donation"))} · out ${money(sum("payout"))} · refunded ${money(sum("refund"))}`, campaign: "Total" }]);
+      e.api.setGridOption("pinnedBottomRowData", [{ text: `${shown.length} events · donated ${money(sum("donation"))} · released ${money(sum("release"))} · refunded ${money(sum("refund"))}`, campaign: "Total" }]);
     },
   });
   $("#q").oninput = () => api_.setGridOption("quickFilterText", $("#q").value);

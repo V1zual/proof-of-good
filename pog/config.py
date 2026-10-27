@@ -19,12 +19,12 @@ UPLOAD_DIR = DATA_DIR / "uploads"
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "http://localhost:8000").rstrip("/")
 PORT = int(os.environ.get("PORT", "8000"))
 
-# A receipt may differ from the planned tranche amount by this share (prices change, exchange rates move).
-AMOUNT_TOLERANCE = float(os.environ.get("AMOUNT_TOLERANCE", "0.15"))
+# A tranche counts as spent when matched card payments reach this share of it (prices and rates move).
+SPEND_MIN = float(os.environ.get("SPEND_MIN", "0.85"))
+# Real bank feeds (Monobank tokens) are off on the public demo; the demo card is simulated.
+ALLOW_MONOBANK = os.environ.get("ALLOW_MONOBANK", "0") == "1"
 # Perceptual-hash distance under which two photos count as the same picture (reused proof).
 PHASH_SAME = int(os.environ.get("PHASH_SAME", "6"))
-# Demo deadline: a campaign with no verified proof this many minutes after its first donation is refunded.
-DEMO_REFUND_MINUTES = float(os.environ.get("DEMO_REFUND_MINUTES", "0"))
 
 _FILES = {
     "PAYPAL_CLIENT_ID": "paypal_client_id.txt",

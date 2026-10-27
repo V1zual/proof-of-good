@@ -22,12 +22,13 @@
       <div class="t-sum">Held for the volunteer's next verified purchase, or refunded.</div></li>`;
     const t = p.detail || {};
     let body = "";
-    if (p.state === "paid") body = `<div class="t-sum">${esc((t.verdict && t.verdict.summary) || "")}</div>${proofsHtml(t.proofs)}
-      <div class="small muted" style="margin-top:6px">Released to ${esc(c.volunteer_name)} with PayPal payout <span class="mono">${esc(t.paid_batch || "")}</span> · ${t.paid_at ? when(t.paid_at) : ""}</div>`;
-    else if (p.state === "verified") body = `<div class="t-sum">The proof is approved; it is paid out as soon as the tranche is fully funded.</div>${proofsHtml(t.proofs)}`;
-    else if (p.state === "rejected") body = `<div class="t-sum">The first proof was rejected by the AI auditor — your money stays held until real proof arrives.</div>`;
-    else body = `<div class="t-sum">Held on PayPal. Nobody has this money yet — it waits for the receipt and the photo.</div>`;
-    return `<li class="${p.state}"><div class="n">${p.state === "paid" ? "✓" : "•"}</div><div class="t-head"><div><b>${esc(p.title)}</b> ${badge(p.state)}</div><div class="t-amt">${money(p.amount)}</div></div>${body}</li>`;
+    if (p.state === "accounted") body = `<div class="t-sum">${esc((t.verdict && t.verdict.summary) || "")}</div>${proofsHtml(t.proofs)}
+      ${t.payments && t.payments.length ? `<ul class="txs">${t.payments.map((x) => txHtml(x)).join("")}</ul>` : ""}
+      <div class="small muted" style="margin-top:6px">Spent from ${esc(c.volunteer_name)}'s transparent card and proven · ${t.accounted_at ? when(t.accounted_at) : ""}</div>`;
+    else if (p.state === "released") body = `<div class="t-sum">On ${esc(c.volunteer_name)}'s transparent card now. Every payment from it shows up here, checked by the AI auditor.</div>
+      ${t.payments && t.payments.length ? `<ul class="txs">${t.payments.map((x) => txHtml(x)).join("")}</ul>` : ""}`;
+    else body = `<div class="t-sum">Held on PayPal. Nobody has this money yet — it goes to the card when the tranches before it are spent and proven.</div>`;
+    return `<li class="${p.state}"><div class="n">${p.state === "accounted" ? "✓" : "•"}</div><div class="t-head"><div><b>${esc(p.title)}</b> ${badge(p.state)}</div><div class="t-amt">${money(p.amount)}</div></div>${body}</li>`;
   };
   $("#app").innerHTML = header("") + `
   <section style="padding:30px 0 20px"><div class="eyebrow">Your donation</div>
@@ -35,7 +36,8 @@
     <p class="lead" style="margin-top:6px"><a href="/c/${c.id}">${icon(c)} ${esc(c.title)}</a> · ${esc(c.place)}</p>
     <p class="small muted">${d.donor_name ? esc(d.donor_name) + " · " : ""}${when(d.created)} · PayPal capture <span class="mono">${esc(d.id)}</span></p></section>
   <div class="two">
-    <div class="card"><h3>Where your money is now</h3><p class="small muted" style="margin:2px 0 18px">Donations fill the tranches in order. This is the part that is yours.</p>
+    <div class="card">${c.status === "frozen" ? `<div class="note bad" style="margin-bottom:14px"><b>⛔ Spending frozen:</b> ${esc(c.frozen_reason || "")}. Your held share goes back to you.</div>` : ""}
+      <h3>Where your money is now</h3><p class="small muted" style="margin:2px 0 18px">Donations fill the tranches in order. This is the part that is yours.</p>
       <ol class="timeline">${r.parts.map(partHtml).join("")}</ol></div>
     <div class="sticky">
       <div class="card"><h3>The whole campaign</h3>${moneyBar(r.totals)}</div>

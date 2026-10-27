@@ -1,9 +1,9 @@
 [
  {
   "title": "Fake: shop screenshots",
-  "receipt": "shop_receipt.jpg",
   "photo": "shop_photo.jpg",
+  "receipt": "shop_receipt.jpg",
   "expect": "reject",
-  "note": "An order page and a catalogue picture instead of a receipt and a photo on site — the auditor should reject it"
+  "note": "A catalogue picture instead of a photo on site and an order page instead of a receipt — the auditor should reject both"
  }
 ]

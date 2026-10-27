@@ -86,7 +86,26 @@ a.card:hover { text-decoration: none; transform: translateY(-2px); box-shadow: 0
 /* money bar */
 .bar { height: 12px; border-radius: 99px; background: var(--bg-2); overflow: hidden; display: flex; margin: 14px 0 10px; }
 .bar i { display: block; height: 100%; transition: width .6s ease; }
-.bar .paid { background: var(--green); } .bar .held { background: var(--amber); }
+.bar .paid { background: var(--green); } .bar .held { background: var(--amber); } .bar .card { background: var(--blue); }
+.bar.thin { height: 7px; margin: 10px 0 6px; }
+.badge.card { background: var(--blue-bg); color: var(--blue); }
+.dot.card { background: var(--blue); }
+.txs { list-style: none; margin: 10px 0 0; padding: 0; }
+.tx { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; padding: 9px 0; border-top: 1px dashed var(--line); font-size: 14px; }
+.tx:first-child { border-top: 0; }
+.tx .ti { font-size: 17px; line-height: 1.3; }
+.tx .tamt { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tx.flagged b { color: var(--red); }
+.cardface { border-radius: 16px; padding: 18px; color: #fff; background: linear-gradient(135deg, #1f2a37, #0b6e4f); position: relative; overflow: hidden; }
+.cardface::after { content: ""; position: absolute; right: -40px; top: -40px; width: 160px; height: 160px; border-radius: 50%; background: rgba(255,255,255,.08); }
+.cardface .lbl { font: 600 12px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
+.cardface .num { font: 500 20px/1.2 var(--mono); margin: 14px 0 4px; letter-spacing: .08em; }
+.cardface .bal { font: 700 26px/1.1 var(--serif); }
+.sim { display: grid; gap: 8px; margin-top: 14px; }
+.sim button { text-align: left; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 12px; padding: 10px 12px; font: 600 14px/1.3 var(--sans); cursor: pointer; display: flex; gap: 10px; align-items: center; }
+.sim button:hover { border-color: var(--green); }
+.sim button.bad:hover { border-color: var(--red); }
+.sim button span { font-size: 18px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; color: var(--muted); }
 .legend b { color: var(--ink); font-variant-numeric: tabular-nums; }
 .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }

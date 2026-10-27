@@ -11,7 +11,13 @@
 <script src="/static/app.js"></script>
 <script>
 const cid = location.pathname.split("/").pop();
-let amount = 20, paypalReady = false;
+let amount = 20;
+
+const barCard = (c) => moneyBar(c.totals) + `<div class="small muted" style="margin-top:8px">${c.totals.donors} donation${c.totals.donors === 1 ? "" : "s"} · the money reaches the volunteer one tranche at a time · what is still held goes back if the money is misused</div>`;
+const cardCard = (c) => `<h3>The transparent card</h3>
+  <p class="small muted" style="margin:2px 0 14px">${esc(c.volunteer_name)} pays only with ${esc(c.card_label || "the campaign card")}. The bank reports every payment, and the AI auditor checks it the moment it happens.</p>
+  ${c.card_feed && c.card_feed.length ? `<ul class="txs">${c.card_feed.map((t) => txHtml(t)).join("")}</ul>` : `<p class="muted small">No card payments yet.</p>`}`;
+const ledgerCard = (c) => `<h3 style="margin-bottom:14px">Public ledger</h3>${feedHtml(c.ledger)}<p class="small" style="margin:14px 0 0"><a href="/ledger">All campaigns in one table →</a></p>`;
 
 async function render() {
   const [cfg, c] = await Promise.all([config(), api("/api/campaigns/" + cid)]);
@@ -20,19 +26,19 @@ async function render() {
   $("#app").innerHTML = header("home") + `
   <section style="padding:26px 0 22px">
     <div class="camp-icon">${icon(c)}</div>
-    <div class="small muted">📍 ${esc(c.place)} · volunteer ${esc(c.volunteer_name)}
+    <div class="small muted">📍 ${esc(c.place)} · volunteer ${esc(c.volunteer_name)} · 💳 ${esc(c.card_label || "")}
       ${closed ? ` · <span class="badge ${c.status === "completed" ? "ok" : "bad"}">${c.status}</span>` : ""}</div>
     <h1 class="display" style="margin-top:8px;font-size:clamp(30px,4.4vw,48px)">${esc(c.title)}</h1>
     <p class="lead" style="margin-top:14px">${esc(c.story)}</p>
   </section>
+  ${frozenBanner(c)}
   <div class="two">
     <div>
-      <div class="card">${moneyBar(c.totals)}
-        <div class="small muted" style="margin-top:8px">${c.totals.donors} donation${c.totals.donors === 1 ? "" : "s"} · money is released one tranche at a time, only after proof · refunded if proof never comes</div></div>
-      <div class="card"><h3>Where the money goes</h3><p class="small muted" style="margin:2px 0 18px">Each tranche unlocks only when the AI auditor approves its receipt and photo.</p>
-        <ol class="timeline">${c.tranches.map(trancheHtml).join("")}</ol></div>
-      <div class="card"><h3 style="margin-bottom:14px">Public ledger</h3>${feedHtml(c.ledger)}
-        <p class="small" style="margin:14px 0 0"><a href="/ledger">All campaigns in one table →</a></p></div>
+      <div class="card" id="c-bar">${barCard(c)}</div>
+      <div class="card"><h3>Where the money goes</h3><p class="small muted" style="margin:2px 0 18px">One tranche at a time goes to the card. The next one comes only after the last one is spent on the purpose and proven with a photo.</p>
+        <ol class="timeline" id="c-tranches">${c.tranches.map(trancheHtml).join("")}</ol></div>
+      <div class="card" id="c-card">${cardCard(c)}</div>
+      <div class="card" id="c-ledger">${ledgerCard(c)}</div>
     </div>
     <div class="sticky">
       <div class="card" id="donate">
@@ -41,16 +47,15 @@ async function render() {
         <div class="amounts">${[5, 10, 20, 50, 100].map((v) => `<button data-v="${v}" class="${v === amount ? "on" : ""}">$${v}</button>`).join("")}</div>
         <label class="f" for="amt">Or any amount (USD)</label><input id="amt" type="number" min="1" max="10000" value="${amount}">
         <div id="paypal-buttons" style="margin-top:16px;min-height:50px"></div>
-        <p class="small muted" style="margin:6px 0 12px">Captured to the Proof of Good PayPal account and <b>held</b>. ${esc(c.volunteer_name)} receives it tranche by tranche, only after the AI auditor approves the proof.</p>
+        <p class="small muted" style="margin:6px 0 12px">Pay with PayPal or any bank card. The money is <b>held</b> on PayPal and goes to ${esc(c.volunteer_name)}'s transparent card one tranche at a time.</p>
         ${cfg.sandbox_buyer ? `<div class="note"><b>Judges / testers:</b> this is the PayPal sandbox — no real money. In the PayPal window log in with the test buyer<br><span class="mono">${esc(cfg.sandbox_buyer)}</span></div>` : ""}
         <div id="thanks" style="margin-top:12px"></div>`}
       </div>
-      ${cfg.bot ? `<div class="card"><h3>Get the proof in Telegram</h3>
-        <p class="small muted" style="margin:6px 0 12px">Follow the campaign and get the photo and the receipt summary the moment donors' money is released.</p>
+      ${c.try_it ? `<div class="card"><h3>Test it end to end</h3><p class="small muted" style="margin:6px 0 12px">1. Donate $10. 2. Open the volunteer portal with the code <span class="mono">TRY-IT</span>: pay with the demo card, then send a photo of any bottle of water. 3. Try to cheat with the card.</p>
+        <a class="btn ghost" href="/volunteer?code=TRY-IT">Volunteer portal</a></div>` : ""}
+      ${cfg.bot ? `<div class="card"><h3>Follow in Telegram</h3>
+        <p class="small muted" style="margin:6px 0 12px">Get a message when money is released, and the photo when it is proven spent.</p>
         <a class="btn ghost" href="https://t.me/${cfg.bot}?start=follow_${c.id}">Follow in Telegram</a></div>` : ""}
-      <div class="card"><h3>Are you the volunteer?</h3>
-        <p class="small muted" style="margin:6px 0 12px">Send the receipt and a photo on the volunteer portal${cfg.bot ? " or straight from Telegram" : ""}.</p>
-        <a class="btn ghost" href="/volunteer">Volunteer portal</a></div>
     </div>
   </div>` + footer(cfg);
   if (!closed) {
@@ -74,28 +79,30 @@ function loadPayPal(cfg) {
         const r = await api(`/api/orders/${data.orderID}/capture`, { method: "POST" });
         const id = r.donation.capture_id;
         $("#thanks").innerHTML = `<div class="note ok">💙 <b>Thank you${r.donation.payer_name ? ", " + esc(r.donation.payer_name) : ""}!</b>
-          ${money(r.donation.amount)} is held for this campaign and moves only after proof.<br>
+          ${money(r.donation.amount)} is held for this campaign and reaches the volunteer only through the transparent card.<br>
           <a href="/d/${id}"><b>Track where your money goes →</b></a></div>`;
-        setTimeout(() => refresh(), 600);
+        setTimeout(refresh, 600);
       } catch (e) { $("#thanks").innerHTML = `<div class="note bad">⚠️ ${esc(e.message)}</div>`; }
     },
     onError: (e) => { $("#thanks").innerHTML = `<div class="note bad">⚠️ PayPal: ${esc(e.message || e)}</div>`; },
   }).render("#paypal-buttons");
   if (window.paypal) return mount();
   const s = document.createElement("script");
-  s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.paypal_client_id)}&currency=USD&intent=capture&components=buttons&disable-funding=card,credit,paylater,venmo`;
+  s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(cfg.paypal_client_id)}&currency=USD&intent=capture&components=buttons&enable-funding=card&disable-funding=credit,paylater,venmo`;
   s.onload = mount;
   document.head.appendChild(s);
 }
 
-// re-draw everything but the donate box (the PayPal button and the thank-you note stay)
+// re-draw the live parts; the PayPal button and the thank-you note stay
 async function refresh() {
   const c = await api("/api/campaigns/" + cid);
-  $$(".two > div:first-child .card")[0].innerHTML = moneyBar(c.totals) + `<div class="small muted" style="margin-top:8px">${c.totals.donors} donation${c.totals.donors === 1 ? "" : "s"} · money is released one tranche at a time, only after proof · refunded if proof never comes</div>`;
-  $(".timeline").innerHTML = c.tranches.map(trancheHtml).join("");
-  $$(".two > div:first-child .card")[2].innerHTML = `<h3 style="margin-bottom:14px">Public ledger</h3>${feedHtml(c.ledger)}<p class="small" style="margin:14px 0 0"><a href="/ledger">All campaigns in one table →</a></p>`;
+  $("#c-bar").innerHTML = barCard(c);
+  $("#c-tranches").innerHTML = c.tranches.map(trancheHtml).join("");
+  $("#c-card").innerHTML = cardCard(c);
+  $("#c-ledger").innerHTML = ledgerCard(c);
 }
 render();
+setInterval(() => document.visibilityState === "visible" && refresh().catch(() => {}), 8000);
 </script>
 </body>
 </html>
