@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Page not found · Proof of Good</title>
+<title data-i18n="nf.title">Page not found · Proof of Good</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/landing.css">
@@ -14,11 +14,13 @@
   <section class="hero">
     <div class="wrap">
       <div class="eyebrow"><i class="ph ph-compass" aria-hidden="true"></i>404</div>
-      <h1>Page not found.</h1>
-      <p class="lead">The link may be old: test donations are forgotten when the demo server restarts. Everything that exists right now is on the campaigns page and in the public ledger.</p>
-      <div class="cta"><a class="btn btn-primary" href="/">Back to the start <i class="ph ph-arrow-right" aria-hidden="true"></i></a><a class="btn btn-ghost" href="/campaigns">Open campaigns</a></div>
+      <h1 data-i18n="nf.h1">Page not found.</h1>
+      <p class="lead" data-i18n="nf.lead">The link may be old: test donations are forgotten when the demo server restarts. Everything that exists right now is on the campaigns page and in the public ledger.</p>
+      <div class="cta"><a class="btn btn-primary" href="/"><span data-i18n="nf.back">Back to the start</span> <i class="ph ph-arrow-right" aria-hidden="true"></i></a><a class="btn btn-ghost" href="/campaigns" data-i18n="nf.open">Open campaigns</a></div>
     </div>
   </section>
 </main>
+<script src="/static/i18n.js"></script>
+<script>applyStatic();</script>
 </body>
 </html>

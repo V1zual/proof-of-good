@@ -16,67 +16,73 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <div class="wrap" id="app"></div>
+<script src="/static/i18n.js"></script>
 <script src="/static/app.js"></script>
 <script>
 (async () => {
+  document.title = L("Public ledger") + " · Proof of Good";
   const [cfg, rows] = await Promise.all([config(), api("/api/ledger")]);
   const total = (kind) => rows.filter((r) => r.kind === kind).reduce((s, r) => s + (r.amount || 0), 0);
   const inflow = total("donation"), out = total("release"), back = total("refund");
   const campaigns = [...new Set(rows.map((r) => r.campaign))];
+  const kinds = [["donation", "Donations"], ["release", "Releases to the card"], ["card", "Card payments"], ["flag", "Freezes"], ["refund", "Refunds"], ["verdict", "AI verdicts"], ["proof", "Proofs"]];
   $("#app").innerHTML = header("ledger") + `<main id="main">
-  <section class="page-head"><div class="eyebrow">Public ledger</div>
-    <h1 class="display">Every dollar, in public.</h1>
-    <p class="lead">Each donation, release to a card, card payment, AI verdict, freeze and refund, with the real PayPal and bank ids.</p></section>
+  <section class="page-head"><div class="eyebrow">${L("Public ledger")}</div>
+    <h1 class="display">${L("Every dollar, in public.")}</h1>
+    <p class="lead">${L("Each donation, release to a card, card payment, AI verdict, freeze and refund, with the real PayPal and bank ids.")}</p></section>
   <div class="stats mb-16">
-    <div><b>${money0(inflow)}</b><span>donated</span></div><div><b>${money0(out)}</b><span>released to cards</span></div>
-    <div><b>${money0(back)}</b><span>refunded</span></div><div><b>${money0(inflow - out - back)}</b><span>held right now</span></div>
+    <div><b>${money0(inflow)}</b><span>${L("donated")}</span></div><div><b>${money0(out)}</b><span>${L("released to cards")}</span></div>
+    <div><b>${money0(back)}</b><span>${L("refunded")}</span></div><div><b>${money0(inflow - out - back)}</b><span>${L("held right now")}</span></div>
   </div>
   <div class="card tight">
     <div class="toolbar" role="search">
-      <input id="q" class="grow" type="search" placeholder="Search a name, an amount, a PayPal id…" aria-label="Search the ledger">
-      <select id="camp" class="auto" aria-label="Campaign"><option value="">All campaigns</option>${campaigns.map((c) => `<option>${esc(c)}</option>`).join("")}</select>
-      <select id="kind" class="auto" aria-label="Event"><option value="">All events</option><option value="donation">Donations</option><option value="release">Releases to the card</option><option value="card">Card payments</option><option value="flag">Freezes</option><option value="refund">Refunds</option><option value="verdict">AI verdicts</option><option value="proof">Proofs</option></select>
-      <button class="btn ghost" id="csv" type="button">${ph("download-simple")}Download CSV</button>
+      <input id="q" class="grow" type="search" placeholder="${esc(L("Search a name, an amount, a PayPal id…"))}" aria-label="${esc(L("Search the ledger"))}">
+      <select id="camp" class="auto" aria-label="${esc(L("Campaign"))}"><option value="">${L("All campaigns")}</option>${campaigns.map((c) => `<option value="${esc(c)}">${esc(tr(c))}</option>`).join("")}</select>
+      <select id="kind" class="auto" aria-label="${esc(L("Event"))}"><option value="">${L("All events")}</option>${kinds.map(([k, l]) => `<option value="${k}">${L(l)}</option>`).join("")}</select>
+      <button class="btn ghost" id="csv" type="button">${ph("download-simple")}${L("Download CSV")}</button>
     </div>
     <div id="grid"></div>
   </div>
-  <p class="small muted mt-12">Table: AG Grid Community. The bottom row sums what the filters show.</p></main>` + footer(cfg);
+  <p class="small muted mt-12">${L("Table: AG Grid Community. The bottom row sums what the filters show.")}</p></main>` + footer(cfg);
 
   const theme = agGrid.themeQuartz.withParams({ backgroundColor: "#181818", foregroundColor: "#FFFFFF", headerBackgroundColor: "#1F1F1F",
     borderColor: "#272727", accentColor: "#3DD68C", browserColorScheme: "dark", fontFamily: "Geist, system-ui, sans-serif", fontSize: 14, headerFontSize: 14 });
   const icon = { donation: "hand-heart", release: "paper-plane-tilt", card: "credit-card", flag: "snowflake", proof: "paperclip", verdict: "robot", refund: "arrow-u-up-left", note: "note" };
   const color = { release: "var(--blue)", card: "var(--text)", verdict: "var(--green)", refund: "var(--red)", donation: "var(--text)" };
+  const kindName = (k) => DICT["kind." + k] ?? k;
   let kind = "", camp = "", totalsText = "";
   // a short ledger grows with its rows; a long one scrolls inside a fixed box
   const auto = rows.length < 40;
   if (auto) document.getElementById("grid").style.height = "auto";
   const api_ = agGrid.createGrid(document.getElementById("grid"), {
     theme, rowData: rows, domLayout: auto ? "autoHeight" : "normal",
-    overlayNoRowsTemplate: '<span class="muted">No events match. Clear the search or pick all events.</span>',
+    overlayNoRowsTemplate: `<span class="muted">${L("No events match. Clear the search or pick all events.")}</span>`,
     defaultColDef: { sortable: true, filter: true, resizable: true },
     columnDefs: [
-      { field: "at", headerName: "When", width: 120, sort: "desc", valueFormatter: (p) => (p.value ? when(p.value) : "") },
-      { field: "campaign", headerName: "Campaign", width: 180 },
-      { field: "kind", headerName: "Event", width: 120, cellRenderer: (p) => (p.value ? `${ph(icon[p.value] || "circle")} ${p.value}` : "") },
+      { field: "at", headerName: L("When"), width: 136, sort: "desc", valueFormatter: (p) => (p.value ? when(p.value) : "") },
+      { field: "campaign", headerName: L("Campaign"), width: 164, valueGetter: (p) => p.data && (p.data.total ? L("Total") : tr(p.data.campaign)) },
+      { field: "kind", headerName: L("Event"), width: 120, cellRenderer: (p) => (p.value ? `${ph(icon[p.value] || "circle")} ${esc(kindName(p.value))}` : "") },
       { field: "amount", headerName: "USD", width: 100, type: "numericColumn", valueFormatter: (p) => (p.value == null ? "" : money(p.value)),
         cellStyle: (p) => ({ color: color[p.data.kind] || "inherit", fontWeight: 600 }) },
-      { field: "text", headerName: "What happened", flex: 1, minWidth: 270, wrapText: true, autoHeight: true, valueGetter: (p) => p.data && plain(p.data.text) },
-      { field: "photo", headerName: "Proof", width: 80, sortable: false, filter: false,
-        cellRenderer: (p) => (p.value ? `<a href="/uploads/${p.value}" target="_blank" rel="noopener"><img class="cell-img" src="/uploads/${p.value}" alt="Proof photo"></a>` : "") },
-      { field: "ref", headerName: "PayPal or proof id", width: 150, cellClass: "mono" },
+      { field: "text", headerName: L("What happened"), flex: 1, minWidth: 270, wrapText: true, autoHeight: true, valueGetter: (p) => p.data && tr(plain(p.data.text)) },
+      { field: "photo", headerName: L("Proof"), width: 80, sortable: false, filter: false,
+        cellRenderer: (p) => (p.value ? `<a href="/uploads/${p.value}" target="_blank" rel="noopener"><img class="cell-img" src="/uploads/${p.value}" alt="${esc(L("Proof photo"))}"></a>` : "") },
+      { field: "ref", headerName: L("PayPal or proof id"), width: 150, cellClass: "mono" },
     ],
     isExternalFilterPresent: () => !!(kind || camp),
     doesExternalFilterPass: (n) => (!kind || n.data.kind === kind) && (!camp || n.data.campaign === camp),
     onModelUpdated: (e) => {
       const shown = []; e.api.forEachNodeAfterFilter((n) => shown.push(n.data));
       const sum = (k) => shown.filter((r) => r.kind === k).reduce((s, r) => s + (r.amount || 0), 0);
-      const text = `${shown.length} events · donated ${money(sum("donation"))} · released ${money(sum("release"))} · refunded ${money(sum("refund"))}`;
+      const text = L("{n} events · donated {d} · released {r} · refunded {f}", { n: shown.length, d: money(sum("donation")), r: money(sum("release")), f: money(sum("refund")) });
       // setting the totals row updates the model again; set it only when the sums change, or the grid redraws forever
       if (text === totalsText) return;
       totalsText = text;
-      e.api.setGridOption("pinnedBottomRowData", [{ text, campaign: "Total" }]);
+      e.api.setGridOption("pinnedBottomRowData", [{ text, total: true }]);
     },
   });
+  // the "what happened" lines come from the server in English; translate them once, then redraw the cells
+  translateTexts(rows.map((r) => plain(r.text))).then((ok) => { if (ok) { api_.refreshCells({ force: true }); api_.resetRowHeights(); } });
   $("#q").oninput = () => api_.setGridOption("quickFilterText", $("#q").value);
   $("#kind").onchange = () => { kind = $("#kind").value; api_.onFilterChanged(); };
   $("#camp").onchange = () => { camp = $("#camp").value; api_.onFilterChanged(); };

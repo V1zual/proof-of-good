@@ -49,6 +49,14 @@ section { padding: 96px 0; }
 .nav .links a { padding: 4px 12px; border-radius: 8px; font: 500 14px/20px var(--font); color: var(--muted); text-decoration: none; transition: color 300ms var(--curve), background-color 300ms var(--curve); }
 .nav .links a:hover { color: var(--text); background: var(--surface-2); }
 .nav .links a[aria-current="page"] { color: var(--text); }
+/* language switch: EN · UA · RU */
+.lang { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--line); border-radius: 8px; }
+.lang button { border: 0; background: transparent; color: var(--muted); font: 500 12px/16px var(--font); padding: 4px 8px; border-radius: 6px; cursor: pointer;
+  transition: color 300ms var(--curve), background-color 300ms var(--curve); }
+.lang button:hover { color: var(--text); }
+.lang button[aria-pressed="true"] { color: var(--text); background: var(--surface-2); }
+.panel .lang { align-self: flex-start; margin-top: 24px; }
+.panel .lang button { font-size: 16px; line-height: 24px; padding: 8px 12px; }
 .menu-btn { display: none; width: 40px; height: 40px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; position: relative; }
 .menu-btn i { position: absolute; left: 12px; width: 16px; height: 2px; border-radius: 2px; background: var(--text); transition: transform 500ms var(--curve), opacity 300ms var(--curve); }
 .menu-btn i:nth-child(1) { top: 15px; } .menu-btn i:nth-child(2) { top: 23px; }
@@ -62,7 +70,7 @@ section { padding: 96px 0; }
 .menu-open .panel a { opacity: 1; transform: none; }
 .menu-open .panel a:nth-child(2) { transition-delay: 60ms; } .menu-open .panel a:nth-child(3) { transition-delay: 120ms; }
 .menu-open .panel a:nth-child(4) { transition-delay: 180ms; } .menu-open .panel a:nth-child(5) { transition-delay: 240ms; }
-@media (max-width: 760px) { .nav .links, .nav .nav-cta { display: none; } .menu-btn { display: block; } .nav { gap: 16px; } }
+@media (max-width: 760px) { .nav .links, .nav .nav-cta, .nav .lang { display: none; } .menu-btn { display: block; } .nav { gap: 16px; } }
 
 /* hero */
 .hero { padding: 96px 0; }
@@ -80,6 +88,12 @@ section { padding: 96px 0; }
 
 /* "See every payment." is 338px wide at 36px; narrow phones get the next step down so each sentence keeps one line */
 @media (max-width: 420px) { .hero h1 { font-size: 30px; line-height: 36px; } }
+
+/* Ukrainian and Russian lines run 15 to 25% wider than English: one type step down keeps each sentence on one line */
+:lang(uk) .hero h1, :lang(ru) .hero h1 { font-size: 48px; line-height: 1; }
+@media (max-width: 640px) { :lang(uk) .hero h1, :lang(ru) .hero h1 { font-size: 30px; line-height: 36px; } }
+@media (max-width: 420px) { :lang(uk) .hero h1, :lang(ru) .hero h1 { font-size: 24px; line-height: 32px; } }
+:lang(uk) .tagline p, :lang(ru) .tagline p { font-size: 36px; line-height: 40px; }
 
 /* product replay panel */
 .replay { border: 1px solid var(--line); border-radius: 24px; background: var(--surface); padding: 16px; }

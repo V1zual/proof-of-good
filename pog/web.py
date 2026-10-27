@@ -233,6 +233,49 @@ async def api_rate():
     return {"USD": await audit.uah_rate("USD"), "source": "National Bank of Ukraine"}
 
 
+# ---------- live texts in Ukrainian and Russian ----------
+
+TRANSLATED: dict[tuple[str, str], str] = {}  # (lang, English text) -> translation, shared by every visitor
+_tr_lock = asyncio.Lock()
+_tr_calls: list[float] = []
+LANG_NAMES = {"uk": "Ukrainian", "ru": "Russian"}
+TR_SCHEMA = {"type": "OBJECT", "properties": {"items": {"type": "ARRAY", "items": {"type": "STRING"}}},
+             "required": ["items"]}
+
+
+@app.post("/api/translate")
+async def api_translate(body: dict):
+    """Server texts the page shows (ledger lines, AI verdicts, bank categories) for the Ukrainian and Russian site.
+    The page asks only for strings it has not seen; answers are cached for every visitor, and Gemini is called at
+    most 20 times a minute so the auditor keeps its quota. Strings that could not be translated are left out."""
+    lang = body.get("lang")
+    if lang not in LANG_NAMES:
+        raise HTTPException(400, "lang must be uk or ru")
+    texts = list(dict.fromkeys(s for s in (str(x)[:600] for x in (body.get("texts") or [])[:60]) if s.strip()))
+    async with _tr_lock:
+        missing = [s for s in texts if (lang, s) not in TRANSLATED]
+        now = time.time()
+        _tr_calls[:] = [c for c in _tr_calls if now - c < 60]
+        if missing and len(_tr_calls) < 20:
+            _tr_calls.append(now)
+            prompt = (f"Translate each English string into {LANG_NAMES[lang]} for a donation transparency website: "
+                      "volunteers spend donations from a transparent bank card and an AI auditor checks every payment "
+                      "and photo. Use the polite form of address. Keep unchanged: numbers, amounts with $ or ₴, ids, "
+                      "codes, emoji, «» quotes, shop names and people's names. Answer {\"items\": [...]} with exactly "
+                      "one translation per input string, in the same order.\n\n" + json.dumps(missing, ensure_ascii=False))
+            try:
+                out = (await audit._generate([{"text": prompt}], TR_SCHEMA)).get("items") or []
+                if len(out) == len(missing):
+                    if len(TRANSLATED) > 20000:
+                        TRANSLATED.clear()
+                    TRANSLATED.update({(lang, src): str(dst) for src, dst in zip(missing, out)})
+                else:
+                    log.warning("translate: %d strings in, %d out", len(missing), len(out))
+            except Exception:
+                log.exception("translate")
+    return {s: TRANSLATED[(lang, s)] for s in texts if (lang, s) in TRANSLATED}
+
+
 # ---------- volunteer: the card ----------
 
 @app.post("/api/volunteer/login")

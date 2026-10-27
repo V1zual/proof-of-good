@@ -13,6 +13,7 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <div class="wrap" id="app"></div>
+<script src="/static/i18n.js"></script>
 <script src="/static/app.js"></script>
 <script>
 let camp = null, code = new URLSearchParams(location.search).get("code") || "", cfg = null;
@@ -22,24 +23,25 @@ const SIM_ICON = { store: "shopping-cart", np: "package", atm: "money", p2p: "ar
 
 async function login() {
   cfg = await config();
+  document.title = L("Volunteer portal") + " · Proof of Good";
   $("#app").innerHTML = header("volunteer") + `<main id="main">
-  <section class="page-head"><div class="eyebrow">For volunteers</div>
-    <h1 class="display">Spend with the card.<br>Prove with a photo.</h1>
-    <p class="lead">Donations reach you one budget line at a time on your transparent card. Pay only with that card and every payment is checked as it happens. Then send a photo of what you bought, and the next line comes.</p></section>
+  <section class="page-head"><div class="eyebrow">${L("For volunteers")}</div>
+    <h1 class="display">${L("Spend with the card.<br>Prove with a photo.")}</h1>
+    <p class="lead">${L("Donations reach you one budget line at a time on your transparent card. Pay only with that card and every payment is checked as it happens. Then send a photo of what you bought, and the next line comes.")}</p></section>
   <form class="card narrow" id="login" novalidate>
-    <label class="f mt-0" for="code">Campaign code</label><input id="code" placeholder="For example TRY-IT" value="${esc(code)}" autocomplete="off" required aria-describedby="err">
-    <p class="small muted mt-8 mb-16">Test campaign for judges: <span class="mono">TRY-IT</span> · others: <span class="mono">GEN-2026</span> · <span class="mono">WARM-12</span> · <span class="mono">PAWS-80</span></p>
-    <button class="btn" id="go" type="submit">Open my campaign</button><div id="err" class="field-err" role="alert"></div>
+    <label class="f mt-0" for="code">${L("Campaign code")}</label><input id="code" placeholder="${esc(L("For example TRY-IT"))}" value="${esc(code)}" autocomplete="off" required aria-describedby="err">
+    <p class="small muted mt-8 mb-16">${L("Test campaign for judges:")} <span class="mono">TRY-IT</span> · ${L("others:")} <span class="mono">GEN-2026</span> · <span class="mono">WARM-12</span> · <span class="mono">PAWS-80</span></p>
+    <button class="btn" id="go" type="submit">${L("Open my campaign")}</button><div id="err" class="field-err" role="alert"></div>
   </form></main>` + footer(cfg);
   $("#login").onsubmit = async (e) => {
     e.preventDefault();
     code = $("#code").value.trim().toUpperCase();
     $("#code").setAttribute("aria-invalid", !code);
-    if (!code) { $("#err").textContent = "Enter the campaign code from your volunteer invite."; return; }
+    if (!code) { $("#err").textContent = L("Enter the campaign code from your volunteer invite."); return; }
     $("#go").disabled = true;
     try { camp = await api("/api/volunteer/login", { method: "POST", body: JSON.stringify({ code }) }); portal(); }
     catch (er) {
-      $("#err").textContent = er.message === "No campaign with this code" ? "No campaign has this code. Check it and try again." : er.message;
+      $("#err").textContent = er.message === tr("No campaign with this code") ? L("No campaign has this code. Check it and try again.") : er.message;
       $("#code").setAttribute("aria-invalid", "true"); $("#go").disabled = false;
     }
   };
@@ -48,7 +50,7 @@ async function login() {
 
 function dropHtml(kind, title, hint) {
   return `<label class="drop" id="drop-${kind}"><input type="file" id="in-${kind}" accept="image/*" data-kind="${kind}">
-    <span class="thumb">${ph(kind === "receipt" ? "receipt" : "camera")}</span><span><b>${title}</b><span class="hint">${hint}</span></span></label>`;
+    <span class="thumb">${ph(kind === "receipt" ? "receipt" : "camera")}</span><span><b>${L(title)}</b><span class="hint">${L(hint)}</span></span></label>`;
 }
 
 function setFile(kind, file) {
@@ -69,82 +71,88 @@ async function loadSample(s) {
 function cardBox(c) {
   const cur = c.tranches.find((t) => t.status === "released"), next = c.tranches.find((t) => t.status === "waiting");
   const onCard = cur ? cur.amount - cur.spent : 0;
-  return `<div class="cardface"><div class="lbl">Transparent card · ${c.card_mode === "demo" ? "demo bank feed" : "Monobank, read only"}</div>
-      <div class="num">${esc(c.card_label || "")}</div>
-      <div class="bal">${cur ? money(onCard) : "$0.00"}</div><div class="small muted">${cur ? `left of ${money(cur.amount)} for «${esc(cur.title)}»` : "no budget line on the card"}</div></div>
-    ${c.status === "frozen" ? `<div class="note bad mt-12">${ph("snowflake")}<b>Frozen:</b> ${esc(c.frozen_reason || "")}</div>` : ""}
-    ${c.card_mode === "demo" && c.presets && c.presets.length && c.status === "active" ? `<p class="small muted mt-16">Make the demo card pay. The bank feed reports it like a real card would:</p>
-      <div class="sim">${c.presets.map((p) => `<button type="button" data-k="${p.key}" class="${["atm", "p2p", "food"].includes(p.key) ? "bad" : ""}">${ph(SIM_ICON[p.key] || "credit-card")}${esc(p.label)}</button>`).join("")}</div>
+  return `<div class="cardface"><div class="lbl">${L("Transparent card")} · ${L(c.card_mode === "demo" ? "demo bank feed" : "Monobank, read only")}</div>
+      <div class="num">${esc(tr(c.card_label || ""))}</div>
+      <div class="bal">${cur ? money(onCard) : "$0.00"}</div><div class="small muted">${cur ? L("left of {amount} for «{title}»", { amount: money(cur.amount), title: dyn(cur.title) }) : L("no budget line on the card")}</div></div>
+    ${c.status === "frozen" ? `<div class="note bad mt-12">${ph("snowflake")}<b>${L("Frozen:")}</b> ${dyn(c.frozen_reason || "")}</div>` : ""}
+    ${c.card_mode === "demo" && c.presets && c.presets.length && c.status === "active" ? `<p class="small muted mt-16">${L("Make the demo card pay. The bank feed reports it like a real card would:")}</p>
+      <div class="sim">${c.presets.map((p) => `<button type="button" data-k="${p.key}" class="${["atm", "p2p", "food"].includes(p.key) ? "bad" : ""}">${ph(SIM_ICON[p.key] || "credit-card")}${dyn(p.label)}</button>`).join("")}</div>
       <div id="simres" class="small mt-12" aria-live="polite"></div>` : ""}
-    ${!cur && c.status === "active" ? `<p class="small muted mt-12">${c.tranches.every((t) => t.status === "accounted") ? "Every budget line is spent and proven."
-      : `The next budget line reaches the card when ${money((next || {}).amount || 0)} is donated. <a href="/c/${c.id}">Donate on the public page</a>.`}</p>` : ""}`;
+    ${!cur && c.status === "active" ? `<p class="small muted mt-12">${c.tranches.every((t) => t.status === "accounted") ? L("Every budget line is spent and proven.")
+      : L("The next budget line reaches the card when {amount} is donated. {a}Donate on the public page{z}.", { amount: money((next || {}).amount || 0), a: `<a href="/c/${c.id}">`, z: "</a>" })}</p>` : ""}`;
 }
 
 async function portal() {
   const c = camp, cur = c.tranches.find((t) => t.status === "released");
   const samples = await fetch("/static/samples/index.json").then((r) => r.json()).catch(() => []);
   history.replaceState(null, "", `/volunteer?code=${encodeURIComponent(code)}`);
-  document.title = c.title + " · Volunteer portal · Proof of Good";
+  document.title = tr(c.title) + " · " + L("Volunteer portal") + " · Proof of Good";
   const unclear = cur ? cur.payments.filter((p) => p.status === "unclear").length : 0;
+  const needs = plural(unclear, ["payment needs a receipt", "payments need a receipt"], ["платіж потребує чека", "платежі потребують чека", "платежів потребують чека"],
+    ["платёж требует чека", "платежа требуют чека", "платежей требуют чека"]);
   $("#app").innerHTML = header("volunteer") + `<main id="main">
-  <section class="page-head"><div class="small muted">Volunteer ${esc(c.volunteer_name)} · <a href="/c/${c.id}">public page</a> · <a href="/volunteer" id="out">switch campaign</a></div>
-    <h1 class="display sm">${esc(c.title)}</h1></section>
+  <section class="page-head"><div class="small muted">${L("Volunteer {name} · {a}public page{z} · {b}switch campaign{z}",
+    { name: esc(tr(c.volunteer_name)), a: `<a href="/c/${c.id}">`, b: '<a href="/volunteer" id="out">', z: "</a>" })}</div>
+    <h1 class="display sm">${dyn(c.title)}</h1></section>
   <div class="two">
     <div>
-      <div class="card"><h3 class="mb-16">Your campaign card</h3><div id="cardbox">${cardBox(c)}</div></div>
+      <div class="card"><h3 class="mb-16">${L("Your campaign card")}</h3><div id="cardbox">${cardBox(c)}</div></div>
       <div class="card">
-        <h3>Prove the budget line</h3>
-        ${!cur ? `<div class="mt-12">${emptyHtml("camera", "Nothing to prove right now", "No budget line is on the card. When the next one arrives, its photo goes here.")}</div>` : `
-        <p class="small muted mt-4">For «${esc(cur.title)}»: a photo of what you bought, where it is used.${unclear ? ` <b>${unclear} payment${unclear > 1 ? "s" : ""} need${unclear > 1 ? "" : "s"} a receipt</b>, because the bank line does not say what was bought.` : ""}</p>
-        <label class="f" for="in-photo">Photo of the item in place</label>${dropHtml("photo", "Photo of the item where it is used", "An original phone photo keeps its camera date")}
-        <label class="f" for="in-receipt">Receipt <span class="muted">(only for unclear payments)</span></label>${dropHtml("receipt", "Photo of the receipt", "Nova Poshta, marketplace or shop receipt")}
-        ${samples.length ? `<p class="small muted mt-16">No photo at hand? Try a sample:</p>
-          <div class="samples">${samples.map((s, i) => `<button type="button" data-i="${i}" title="${esc(s.note)}">${esc(s.title)}</button>`).join("")}</div>` : ""}
-        <button class="btn block mt-24" id="send" type="button">Run the AI audit</button>
+        <h3>${L("Prove the budget line")}</h3>
+        ${!cur ? `<div class="mt-12">${emptyHtml("camera", L("Nothing to prove right now"), L("No budget line is on the card. When the next one arrives, its photo goes here."))}</div>` : `
+        <p class="small muted mt-4">${L("For «{title}»: a photo of what you bought, where it is used.", { title: dyn(cur.title) })}${unclear ? ` <b>${unclear} ${needs}</b>, ${L("because the bank line does not say what was bought.")}` : ""}</p>
+        <label class="f" for="in-photo">${L("Photo of the item in place")}</label>${dropHtml("photo", "Photo of the item where it is used", "An original phone photo keeps its camera date")}
+        <label class="f" for="in-receipt">${L("Receipt")} <span class="muted">${L("(only for unclear payments)")}</span></label>${dropHtml("receipt", "Photo of the receipt", "Nova Poshta, marketplace or shop receipt")}
+        ${samples.length ? `<p class="small muted mt-16">${L("No photo at hand? Try a sample:")}</p>
+          <div class="samples">${samples.map((s, i) => `<button type="button" data-i="${i}" title="${esc(tr(s.note))}">${dyn(s.title)}</button>`).join("")}</div>` : ""}
+        <button class="btn block mt-24" id="send" type="button">${L("Run the AI audit")}</button>
         <div id="audit" aria-live="polite"></div>`}
       </div>
     </div>
-    <aside class="sticky" aria-label="Campaign">
+    <aside class="sticky" aria-label="${esc(L("Campaign"))}">
       <div class="card">${moneyBar(c.totals)}</div>
-      <div class="card"><h3 class="mb-16">Budget lines</h3><ol class="timeline">${c.tranches.map(trancheHtml).join("")}</ol></div>
-      ${c.try_it ? `<div class="card"><h3>Start the test over</h3><p class="small muted mt-4 mb-12">Refunds the testers' sandbox money and clears this test campaign.</p>
-        <button class="btn ghost" id="reset" type="button">Reset the test campaign</button><div id="resetres" class="small mt-12" aria-live="polite"></div></div>` : ""}
-      <div class="card"><h3>Simulate: the volunteer vanished</h3>
-        <p class="small muted mt-4 mb-12">Closes the campaign and <b>refunds every donor's share that is still held</b> through PayPal Refunds.</p>
-        <button class="btn danger" id="fail" type="button">Refund the held money</button><div id="failres" class="small mt-12" aria-live="polite"></div></div>
+      <div class="card"><h3 class="mb-16">${L("Budget lines")}</h3><ol class="timeline">${c.tranches.map(trancheHtml).join("")}</ol></div>
+      ${c.try_it ? `<div class="card"><h3>${L("Start the test over")}</h3><p class="small muted mt-4 mb-12">${L("Refunds the testers' sandbox money and clears this test campaign.")}</p>
+        <button class="btn ghost" id="reset" type="button">${L("Reset the test campaign")}</button><div id="resetres" class="small mt-12" aria-live="polite"></div></div>` : ""}
+      <div class="card"><h3>${L("Simulate: the volunteer vanished")}</h3>
+        <p class="small muted mt-4 mb-12">${L("Closes the campaign and {b}refunds every donor's share that is still held{z} through PayPal Refunds.", B)}</p>
+        <button class="btn danger" id="fail" type="button">${L("Refund the held money")}</button><div id="failres" class="small mt-12" aria-live="polite"></div></div>
     </aside>
   </div></main>` + footer(cfg);
-  $("#out").onclick = (e) => { e.preventDefault(); camp = null; code = ""; history.replaceState(null, "", "/volunteer"); document.title = "Volunteer portal · Proof of Good"; login(); };
+  $("#out").onclick = (e) => { e.preventDefault(); camp = null; code = ""; history.replaceState(null, "", "/volunteer"); login(); };
   bindCard();
   $$(".drop input").forEach((inp) => (inp.onchange = () => inp.files[0] && setFile(inp.dataset.kind, inp.files[0])));
   $$(".samples button").forEach((b) => (b.onclick = () => loadSample(samples[+b.dataset.i])));
   if ($("#send")) $("#send").onclick = runAudit;
   if ($("#reset")) $("#reset").onclick = async () => {
-    $("#resetres").innerHTML = `<span class="busy"></span>Resetting…`;
+    $("#resetres").innerHTML = `<span class="busy"></span>${L("Resetting…")}`;
     try { await api(`/api/campaigns/${c.id}/reset`, { method: "POST" }); await refresh(); }
-    catch (e) { $("#resetres").textContent = `The reset failed: ${e.message}. Try again in a minute.`; }
+    catch (e) { $("#resetres").textContent = L("The reset failed: {msg}. Try again in a minute.", { msg: e.message }); }
   };
   $("#fail").onclick = async () => {
-    if (!confirm("Refund every donor's held share and close the campaign?")) return;
-    $("#failres").innerHTML = `<span class="busy"></span>Refunding through PayPal…`;
+    if (!confirm(L("Refund every donor's held share and close the campaign?"))) return;
+    $("#failres").innerHTML = `<span class="busy"></span>${L("Refunding through PayPal…")}`;
     try {
       const r = await api(`/api/campaigns/${c.id}/fail`, { method: "POST", body: JSON.stringify({ code, reason: "the volunteer vanished" }) });
-      $("#failres").textContent = `Refunded ${r.refunded.length} donation${r.refunded.length === 1 ? "" : "s"}${r.failed.length ? `, ${r.failed.length} failed` : ""}.`;
+      const n = r.refunded.length;
+      $("#failres").textContent = plural(n, ["Refunded", "Refunded"], ["Повернуто", "Повернуто", "Повернуто"], ["Возвращено", "Возвращено", "Возвращено"]) + ` ${n} `
+        + plural(n, ["donation", "donations"], ["пожертву", "пожертви", "пожертв"], ["пожертвование", "пожертвования", "пожертвований"])
+        + (r.failed.length ? `, ${L("{n} failed", { n: r.failed.length })}` : "") + ".";
       setTimeout(refresh, 900);
-    } catch (e) { $("#failres").textContent = `Nothing was refunded: ${e.message}.`; }
+    } catch (e) { $("#failres").textContent = L("Nothing was refunded: {msg}.", { msg: e.message }); }
   };
 }
 
 function bindCard() {
   $$(".sim button").forEach((b) => (b.onclick = async () => {
     $$(".sim button").forEach((x) => (x.disabled = true));
-    $("#simres").innerHTML = `<span class="busy"></span>The bank reports the payment and the auditor checks it…`;
+    $("#simres").innerHTML = `<span class="busy"></span>${L("The bank reports the payment and the auditor checks it…")}`;
     try {
-      const t = await api(`/api/campaigns/${camp.id}/card/simulate`, { method: "POST", body: JSON.stringify({ code, key: b.dataset.k }) });
-      $("#simres").innerHTML = `${badge(t.status)} ${esc(t.reason || "")}`;
+      const pay = await api(`/api/campaigns/${camp.id}/card/simulate`, { method: "POST", body: JSON.stringify({ code, key: b.dataset.k }) });
+      $("#simres").innerHTML = `${badge(pay.status)} ${dyn(pay.reason || "")}`;
       setTimeout(refresh, 1200);
     } catch (e) {
-      $("#simres").textContent = `The payment was not sent: ${e.message}.`;
+      $("#simres").textContent = L("The payment was not sent: {msg}.", { msg: e.message });
       $$(".sim button").forEach((x) => (x.disabled = false));
     }
   }));
@@ -153,11 +161,11 @@ function bindCard() {
 async function refresh() { camp = await api("/api/volunteer/login", { method: "POST", body: JSON.stringify({ code }) }); files.photo = files.receipt = null; portal(); }
 
 async function runAudit() {
-  if (!files.photo) { $("#audit").innerHTML = `<div class="field-err mt-16" role="alert">Add the photo of the item first. A receipt alone does not account for the budget line.</div>`; return; }
+  if (!files.photo) { $("#audit").innerHTML = `<div class="field-err mt-16" role="alert">${L("Add the photo of the item first. A receipt alone does not account for the budget line.")}</div>`; return; }
   const cur = camp.tranches.find((t) => t.status === "released"), fd = new FormData();
   fd.append("code", code); fd.append("photo", files.photo); if (files.receipt) fd.append("receipt", files.receipt);
   $("#send").disabled = true;
-  $("#audit").innerHTML = `<div class="audit"><div class="audit-head"><span class="pulse"></span>AI auditor<span class="timer">0.0 s</span></div><ol class="audit-log"></ol></div>`;
+  $("#audit").innerHTML = `<div class="audit"><div class="audit-head"><span class="pulse"></span>${L("AI auditor")}<span class="timer">0.0 s</span></div><ol class="audit-log"></ol></div>`;
   const log = $(".audit-log"), t0 = Date.now();
   const timer = setInterval(() => { $(".audit .timer").textContent = ((Date.now() - t0) / 1000).toFixed(1) + " s"; }, 100);
   const add = (cls, html) => { const li = document.createElement("li"); li.className = cls; li.innerHTML = html; log.appendChild(li); };
@@ -166,14 +174,14 @@ async function runAudit() {
   try {
     const r = await fetch(`/api/tranches/${cur.id}/evidence`, { method: "POST", body: fd });
     const j = await r.json();
-    if (!r.ok) throw new Error(j.detail || r.statusText);
+    if (!r.ok) throw new Error(tr(j.detail || r.statusText));
     let n = 0;
     for (;;) {
       s = await api(`/api/jobs/${j.job}?after=${n}`);
       for (const e of s.events) {
-        if (e.kind === "stage") { closeStage(); add("stage", esc(e.name)); }
-        else if (e.kind === "check") add(e.ok === true ? "ok" : e.ok === false ? "bad" : "na", `${esc(e.name)}<span class="d">${esc(e.detail)}</span>`);
-        else if (e.kind === "release") { closeStage(); add("money", `<b>${money(e.amount)} released</b> for «${esc(e.tranche)}» with PayPal Payouts<span class="d mono">batch ${esc(e.batch)}</span>`); }
+        if (e.kind === "stage") { closeStage(); add("stage", dyn(e.name)); }
+        else if (e.kind === "check") add(e.ok === true ? "ok" : e.ok === false ? "bad" : "na", `${dyn(e.name)}<span class="d">${dyn(e.detail)}</span>`);
+        else if (e.kind === "release") { closeStage(); add("money", `<b>${L("{amount} released", { amount: money(e.amount) })}</b> ${L("for «{title}» with PayPal Payouts", { title: dyn(e.tranche) })}<span class="d mono">${L("batch {id}", { id: esc(e.batch) })}</span>`); }
         else if (e.kind === "verdict") closeStage();
       }
       n += s.events.length;
@@ -183,16 +191,16 @@ async function runAudit() {
     closeStage();
     if (s.error) throw new Error(s.error);
     const v = s.result, cls = v.accounted ? "approve" : v.decision === "reject" ? "reject" : "review";
-    const title = v.accounted ? "Accounted for" : v.decision === "reject" ? "Rejected" : "Not yet";
+    const title = L(v.accounted ? "Accounted for" : v.decision === "reject" ? "Rejected" : "Not yet");
     $(".audit").insertAdjacentHTML("beforeend", `<div class="verdict ${cls}"><h3>${title}</h3>
-      <p>${esc(v.message_to_volunteer)}</p>
-      ${v.accounted ? `<p class="small"><b>Donors see:</b> ${esc(v.summary)}</p>` : ""}
-      ${v.released ? `<p class="small">Next budget line on your card: <b>${money(v.released.amount)}</b> for «${esc(v.released.title)}».</p>` : ""}
-      <p class="small"><button class="linkbtn" id="again" type="button">Back to the card →</button></p></div>`);
+      <p>${dyn(v.message_to_volunteer)}</p>
+      ${v.accounted ? `<p class="small"><b>${L("Donors see:")}</b> ${dyn(v.summary)}</p>` : ""}
+      ${v.released ? `<p class="small">${L("Next budget line on your card: {b}{amount}{z} for «{title}».", { ...B, amount: money(v.released.amount), title: dyn(v.released.title) })}</p>` : ""}
+      <p class="small"><button class="linkbtn" id="again" type="button">${L("Back to the card →")}</button></p></div>`);
     $(".audit").classList.add("done");
     $("#again").onclick = refresh;
   } catch (e) {
-    $(".audit").insertAdjacentHTML("beforeend", `<div class="verdict reject" role="alert"><h3>The audit did not finish</h3><p>${esc(e.message)}. Send the photo again in a minute.</p></div>`);
+    $(".audit").insertAdjacentHTML("beforeend", `<div class="verdict reject" role="alert"><h3>${L("The audit did not finish")}</h3><p>${L("{msg}. Send the photo again in a minute.", { msg: esc(e.message) })}</p></div>`);
     $(".audit").classList.add("done");
   } finally { clearInterval(timer); if ($("#send")) $("#send").disabled = false; }
 }

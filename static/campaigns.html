@@ -15,33 +15,34 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <div class="wrap" id="app"></div>
+<script src="/static/i18n.js"></script>
 <script src="/static/app.js"></script>
 <script>
 (async () => {
+  document.title = L("Campaigns") + " · Proof of Good";
   const [cfg, list] = await Promise.all([config(), api("/api/campaigns")]);
   const sum = (k) => list.reduce((s, c) => s + c.totals[k], 0);
-  const status = (c) => c.status === "active" ? '<span class="badge ok">active</span>' : `<span class="badge ${c.status === "completed" ? "ok" : "bad"}">${c.status}</span>`;
   const cards = list.map((c) => {
     const done = c.tranches.filter((t) => t.status === "accounted").length;
     return `<a class="card" href="/c/${c.id}">
       <div class="camp-icon">${icon(c)}</div>
-      <h3>${esc(c.title)}</h3><div class="place">${esc(c.place)} · ${esc(c.volunteer_name)}</div>
+      <h3>${dyn(c.title)}</h3><div class="place">${dyn(c.place)} · ${esc(tr(c.volunteer_name))}</div>
       ${moneyBar(c.totals)}
-      <div class="small muted mt-12">${done} of ${c.tranches.length} budget lines spent and proven · ${status(c)}</div>
+      <div class="small muted mt-12">${L("{done} of {n} budget lines spent and proven", { done, n: c.tranches.length })} · ${badge(c.status)}</div>
     </a>`;
   }).join("");
   $("#app").innerHTML = header("campaigns") + `<main id="main">
-  <section class="page-head"><div class="eyebrow">Open campaigns</div>
-    <h1 class="display">Pick a volunteer.<br>Watch every payment.</h1>
-    <p class="lead">Each campaign gets its money one budget line at a time, on a transparent card whose every payment is checked by AI.</p></section>
+  <section class="page-head"><div class="eyebrow">${L("Open campaigns")}</div>
+    <h1 class="display">${L("Pick a volunteer.<br>Watch every payment.")}</h1>
+    <p class="lead">${L("Each campaign gets its money one budget line at a time, on a transparent card whose every payment is checked by AI.")}</p></section>
   <div class="stats">
-    <div><b>${money0(sum("raised"))}</b><span>donated</span></div>
-    <div><b>${money0(sum("held"))}</b><span>held on PayPal</span></div>
-    <div><b>${money0(sum("accounted"))}</b><span>spent and proven</span></div>
-    <div><b>${money0(sum("refunded"))}</b><span>refunded to donors</span></div>
+    <div><b>${money0(sum("raised"))}</b><span>${L("donated")}</span></div>
+    <div><b>${money0(sum("held"))}</b><span>${L("held on PayPal")}</span></div>
+    <div><b>${money0(sum("accounted"))}</b><span>${L("spent and proven")}</span></div>
+    <div><b>${money0(sum("refunded"))}</b><span>${L("refunded to donors")}</span></div>
   </div>
-  <section class="block" aria-label="Campaigns">${list.length ? `<div class="grid">${cards}</div>`
-    : emptyHtml("hand-heart", "No campaigns yet", "The demo server is setting up its example campaigns. Reload the page in a few seconds.")}</section></main>` + footer(cfg);
+  <section class="block" aria-label="${esc(L("Campaigns"))}">${list.length ? `<div class="grid">${cards}</div>`
+    : emptyHtml("hand-heart", L("No campaigns yet"), L("The demo server is setting up its example campaigns. Reload the page in a few seconds."))}</section></main>` + footer(cfg);
 })().catch(failPage);
 </script>
 </body>

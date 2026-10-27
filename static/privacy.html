@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Privacy · Proof of Good</title>
+<title data-i18n="pv.title">Privacy · Proof of Good</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/static/landing.css">
@@ -13,19 +13,21 @@
 <main id="main">
   <section class="hero">
     <div class="wrap">
-      <div class="eyebrow">Privacy</div>
-      <h1>What this demo keeps about you</h1>
+      <div class="eyebrow" data-i18n="pv.eyebrow">Privacy</div>
+      <h1 data-i18n="pv.h1">What this demo keeps about you</h1>
       <div class="lead">
-        <p>Proof of Good is a hackathon demo that runs on the PayPal sandbox. No real money moves and no real bank account is read on this server.</p>
-        <p style="margin-top:16px"><b>Donations.</b> When you donate with a PayPal sandbox account we store the name and email PayPal returns, the amount and the PayPal ids, to show them in the public ledger and on your donation page.</p>
-        <p style="margin-top:16px"><b>Proof photos.</b> Photos and receipts a volunteer uploads are stored on the server, shown publicly next to the campaign, and sent to Google's Gemini API for the audit.</p>
-        <p style="margin-top:16px"><b>Telegram.</b> If you message the bot we keep your chat id to send the updates you asked for.</p>
-        <p style="margin-top:16px"><b>How long.</b> Everything lives in a temporary database that is wiped whenever the demo server restarts. We use no cookies and no analytics.</p>
-        <p style="margin-top:16px">Questions: open an issue on <a href="https://github.com/V1zual/proof-of-good" target="_blank" rel="noopener">GitHub</a>.</p>
+        <p data-i18n="pv.p1">Proof of Good is a hackathon demo that runs on the PayPal sandbox. No real money moves and no real bank account is read on this server.</p>
+        <p style="margin-top:16px" data-i18n="pv.p2"><b>Donations.</b> When you donate with a PayPal sandbox account we store the name and email PayPal returns, the amount and the PayPal ids, to show them in the public ledger and on your donation page.</p>
+        <p style="margin-top:16px" data-i18n="pv.p3"><b>Proof photos.</b> Photos and receipts a volunteer uploads are stored on the server, shown publicly next to the campaign, and sent to Google's Gemini API for the audit.</p>
+        <p style="margin-top:16px" data-i18n="pv.p4"><b>Telegram.</b> If you message the bot we keep your chat id to send the updates you asked for.</p>
+        <p style="margin-top:16px" data-i18n="pv.p5"><b>How long.</b> Everything lives in a temporary database that is wiped whenever the demo server restarts. We use no cookies and no analytics; your browser only remembers the language you pick and texts it has already translated.</p>
+        <p style="margin-top:16px" data-i18n="pv.p6">Questions: open an issue on <a href="https://github.com/V1zual/proof-of-good" target="_blank" rel="noopener">GitHub</a>.</p>
       </div>
-      <div class="cta"><a class="btn btn-ghost" href="/">Back to the start</a></div>
+      <div class="cta"><a class="btn btn-ghost" href="/" data-i18n="nf.back">Back to the start</a></div>
     </div>
   </section>
 </main>
+<script src="/static/i18n.js"></script>
+<script>applyStatic();</script>
 </body>
 </html>
