@@ -89,10 +89,20 @@ async function portal() {
   document.title = tr(c.title) + " · " + L("Volunteer portal") + " · Proof of Good";
   const unclear = cur ? cur.payments.filter((p) => p.status === "unclear").length : 0;
   const needs = plural(unclear, ["payment needs a receipt", "payments need a receipt"], ["платіж потребує чека", "платежі потребують чека", "платежів потребують чека"]);
+  // what the volunteer does now: 1 wait for money, 2 pay with the card, 3 send the photo
+  const now = c.status === "completed" ? 4 : c.status !== "active" ? 0 : !cur ? 1 : cur.spent > 0 ? 3 : 2;
+  const steps = [["Money arrives", "The next budget line reaches your card as soon as donors fund it."],
+    ["Pay with the card", "Buy only what the budget line is for. Every payment is checked."],
+    ["Send a photo", "A photo of the purchase in place unlocks the next line."]];
+  const stepsHtml = `<ol class="vsteps" aria-label="${esc(L("What to do now"))}">${steps.map(([title, text], i) => {
+    const n = i + 1, state = n < now ? "done" : n === now ? "now" : "";
+    return `<li class="${state}"${state === "now" ? ' aria-current="step"' : ""}><span class="n">${n < now ? ph("check") : n}</span><div><b>${L(title)}</b><small>${L(text)}</small></div></li>`;
+  }).join("")}</ol>`;
   $("#app").innerHTML = header("volunteer") + `<main id="main">
   <section class="page-head"><div class="small muted">${L("Volunteer {name} · {a}public page{z} · {b}switch campaign{z}",
     { name: esc(tr(c.volunteer_name)), a: `<a href="/c/${c.id}">`, b: '<a href="/volunteer" id="out">', z: "</a>" })}</div>
     <h1 class="display sm">${dyn(c.title)}</h1></section>
+  ${stepsHtml}
   <div class="two">
     <div>
       <div class="card"><h3 class="mb-16">${L("Your campaign card")}</h3><div id="cardbox">${cardBox(c)}</div></div>

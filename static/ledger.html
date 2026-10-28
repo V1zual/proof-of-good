@@ -60,8 +60,8 @@
     defaultColDef: { sortable: true, filter: true, resizable: true },
     columnDefs: [
       { field: "at", headerName: L("When"), width: 136, sort: "desc", valueFormatter: (p) => (p.value ? when(p.value) : "") },
-      { field: "campaign", headerName: L("Campaign"), width: 164, valueGetter: (p) => p.data && (p.data.total ? L("Total") : tr(p.data.campaign)) },
-      { field: "kind", headerName: L("Event"), width: 120, cellRenderer: (p) => (p.value ? `${ph(icon[p.value] || "circle")} ${esc(kindName(p.value))}` : "") },
+      { field: "campaign", headerName: L("Campaign"), width: 148, valueGetter: (p) => p.data && (p.data.total ? L("Total") : tr(p.data.campaign)) },
+      { field: "kind", headerName: L("Event"), width: 136, cellRenderer: (p) => (p.value ? `${ph(icon[p.value] || "circle")} ${esc(kindName(p.value))}` : "") },
       { field: "amount", headerName: "USD", width: 100, type: "numericColumn", valueFormatter: (p) => (p.value == null ? "" : money(p.value)),
         cellStyle: (p) => ({ color: color[p.data.kind] || "inherit", fontWeight: 600 }) },
       { field: "text", headerName: L("What happened"), flex: 1, minWidth: 270, wrapText: true, autoHeight: true, valueGetter: (p) => p.data && tr(plain(p.data.text)) },

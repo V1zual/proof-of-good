@@ -117,6 +117,61 @@
         <article class="step reveal"><div class="n">02</div><h3 data-i18n="hw.2t">Spend with the transparent card</h3><p data-i18n="hw.2p">One budget line goes to the volunteer's campaign card. The bank reports every payment and AI checks it as it happens.</p></article>
         <article class="step reveal"><div class="n">03</div><h3 data-i18n="hw.3t">Prove and unlock</h3><p data-i18n="hw.3p">A photo of what was bought accounts for the line and releases the next one. Misuse sends the rest back to donors.</p></article>
       </div>
+      <div class="follow reveal">
+        <h3 data-i18n="fl.h3">Follow $12 from a donor to a bottle of water</h3>
+        <ol class="flow">
+          <li><span class="ic"><i class="ph ph-hand-heart" aria-hidden="true"></i></span><b data-i18n="fl.1b">$12 donated</b><small data-i18n="fl.1s">Paid with PayPal and held there. Nobody has it yet.</small></li>
+          <li><span class="ic"><i class="ph ph-credit-card" aria-hidden="true"></i></span><b data-i18n="fl.2b">$10 sent to the card</b><small data-i18n="fl.2s">The first budget line, water for the shelter, goes to the volunteer.</small></li>
+          <li><span class="ic"><i class="ph ph-shopping-cart" aria-hidden="true"></i></span><b data-i18n="fl.3b">−₴440 at a supermarket</b><small data-i18n="fl.3s">The bank reports it and AI matches it to water in about 10 seconds.</small></li>
+          <li><span class="ic"><i class="ph ph-camera" aria-hidden="true"></i></span><b data-i18n="fl.4b">Photo of the water</b><small data-i18n="fl.4s">Taken on site. It proves the line and unlocks the next one.</small></li>
+          <li><span class="ic"><i class="ph ph-vault" aria-hidden="true"></i></span><b data-i18n="fl.5b">$2 still held</b><small data-i18n="fl.5s">It waits for the next line, or goes back to the donor.</small></li>
+        </ol>
+        <div class="branch"><span class="ic"><i class="ph ph-snowflake" aria-hidden="true"></i></span>
+          <p data-i18n="fl.branch"><b>If the card pays for anything else,</b> like a cash withdrawal, a transfer or gambling, it freezes on the spot and the $2 still held goes back to the donor through PayPal Refunds.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens">
+    <div class="wrap">
+      <div class="reveal">
+        <div class="eyebrow"><i class="ph ph-browsers" aria-hidden="true"></i><span data-i18n="sc.eyebrow">See it working</span></div>
+        <h2 class="h2" data-i18n="sc.h2">Every screen from one real run on the PayPal sandbox.</h2>
+      </div>
+      <div class="shots reveal">
+        <div class="tabs" role="tablist" aria-label="Screens">
+          <button type="button" role="tab" id="tab-campaign" aria-controls="shot-campaign" aria-selected="true" data-i18n="sc.t1">Campaign page</button>
+          <button type="button" role="tab" id="tab-volunteer" aria-controls="shot-volunteer" aria-selected="false" tabindex="-1" data-i18n="sc.t2">Volunteer portal</button>
+          <button type="button" role="tab" id="tab-audit" aria-controls="shot-audit" aria-selected="false" tabindex="-1" data-i18n="sc.t3">AI photo check</button>
+          <button type="button" role="tab" id="tab-frozen" aria-controls="shot-frozen" aria-selected="false" tabindex="-1" data-i18n="sc.t4">Frozen card</button>
+          <button type="button" role="tab" id="tab-ledger" aria-controls="shot-ledger" aria-selected="false" tabindex="-1" data-i18n="sc.t5">Public ledger</button>
+          <button type="button" role="tab" id="tab-donor" aria-controls="shot-donor" aria-selected="false" tabindex="-1" data-i18n="sc.t6">Donor's page</button>
+        </div>
+        <figure class="shot" role="tabpanel" id="shot-campaign" aria-labelledby="tab-campaign">
+          <div class="frame"><div class="bar"><i></i><i></i><i></i>proof-of-good.onrender.com/c/try</div><img data-shot="campaign" src="/static/shots/campaign-en.webp" width="1280" height="900" alt="The campaign page: money raised, budget lines and card payments" loading="lazy"></div>
+          <figcaption data-i18n="sc.c1">Donors see what is raised, which budget line is on the card and every card payment with the AI check next to it.</figcaption>
+        </figure>
+        <figure class="shot" role="tabpanel" id="shot-volunteer" aria-labelledby="tab-volunteer" hidden>
+          <div class="frame"><div class="bar"><i></i><i></i><i></i>proof-of-good.onrender.com/volunteer</div><img data-shot="volunteer" src="/static/shots/volunteer-en.webp" width="1280" height="900" alt="The volunteer portal: card balance and the next step" loading="lazy"></div>
+          <figcaption data-i18n="sc.c2">The volunteer sees the card balance for the current budget line and the next step: here, send a photo.</figcaption>
+        </figure>
+        <figure class="shot" role="tabpanel" id="shot-audit" aria-labelledby="tab-audit" hidden>
+          <div class="frame"><div class="bar"><i></i><i></i><i></i>proof-of-good.onrender.com/c/try</div><img data-shot="audit" src="/static/shots/audit-en.webp" width="1280" height="900" alt="The AI audit of a photo and a receipt, with each check" loading="lazy"></div>
+          <figcaption data-i18n="sc.c3">Every photo and receipt goes through the checks. This shop picture was rejected, with the reasons shown to donors.</figcaption>
+        </figure>
+        <figure class="shot" role="tabpanel" id="shot-frozen" aria-labelledby="tab-frozen" hidden>
+          <div class="frame"><div class="bar"><i></i><i></i><i></i>proof-of-good.onrender.com/c/try</div><img data-shot="frozen" src="/static/shots/frozen-en.webp" width="1280" height="900" alt="A campaign frozen after a cash withdrawal" loading="lazy"></div>
+          <figcaption data-i18n="sc.c4">A cash withdrawal froze the card at once. No more money is released.</figcaption>
+        </figure>
+        <figure class="shot" role="tabpanel" id="shot-ledger" aria-labelledby="tab-ledger" hidden>
+          <div class="frame"><div class="bar"><i></i><i></i><i></i>proof-of-good.onrender.com/ledger</div><img data-shot="ledger" src="/static/shots/ledger-en.webp" width="1280" height="900" alt="The public ledger table" loading="lazy"></div>
+          <figcaption data-i18n="sc.c5">Every donation, release, card payment, verdict and refund in one table, with the real PayPal ids.</figcaption>
+        </figure>
+        <figure class="shot" role="tabpanel" id="shot-donor" aria-labelledby="tab-donor" hidden>
+          <div class="frame"><div class="bar"><i></i><i></i><i></i>proof-of-good.onrender.com/d/…</div><img data-shot="donor" src="/static/shots/donor-en.webp" width="1280" height="900" alt="A donor's page showing where each dollar is" loading="lazy"></div>
+          <figcaption data-i18n="sc.c6">Each donor gets a link that shows where every dollar is now: on the card, spent and proven, or refunded.</figcaption>
+        </figure>
+      </div>
     </div>
   </section>
 
@@ -157,7 +212,13 @@
     <div class="wrap">
       <div class="final reveal">
         <h2 class="h2" data-i18n="fn.h2">See the whole flow with test money, from donation to refund.</h2>
-        <p class="lead" data-i18n="fn.lead">Donate $10 with the sandbox buyer shown on the page, make the demo card pay, send a photo, then try to cheat. No signup needed.</p>
+        <ol class="checklist">
+          <li><span data-i18n="fn.s1">Open the <a href="/c/try">test campaign</a> and donate $10 with the sandbox buyer shown on the page.</span></li>
+          <li><span data-i18n="fn.s2">Open the <a href="/volunteer?code=TRY-IT">volunteer portal</a> with the code TRY-IT and make the demo card pay at a supermarket.</span></li>
+          <li><span data-i18n="fn.s3">Send a photo of any bottle of water and watch the AI check it.</span></li>
+          <li><span data-i18n="fn.s4">Press the ATM button and watch the card freeze and the money go back.</span></li>
+        </ol>
+        <p class="lead" data-i18n="fn.lead">No signup needed. Everything runs on the PayPal sandbox with test money.</p>
         <div class="cta"><a class="btn btn-primary" href="/c/try"><span data-i18n="cta">Try the full flow in 2 minutes</span> <i class="ph ph-arrow-right" aria-hidden="true"></i></a></div>
         <div class="guarantee"><i class="ph ph-arrow-u-up-left" aria-hidden="true"></i><p data-i18n="fn.guarantee">If the money is misused or proof never comes, every donor's share that is still held goes back through PayPal Refunds, automatically.</p></div>
       </div>
@@ -215,6 +276,22 @@ setMenu(false);
 nav.onclick = () => setMenu(!document.body.classList.contains("menu-open"));
 panel.querySelectorAll("a").forEach((a) => (a.onclick = () => setMenu(false)));
 addEventListener("keydown", (e) => { if (e.key === "Escape") setMenu(false); });
+
+// screens from a real run: tabs (arrow keys move between them), pictures in the page's language
+document.querySelectorAll("img[data-shot]").forEach((img) => (img.src = `/static/shots/${img.dataset.shot}-${LANG}.webp`));
+const tabs = [...document.querySelectorAll(".shots [role=tab]")];
+const showTab = (tab) => tabs.forEach((t) => {
+  const on = t === tab;
+  t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1;
+  document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+});
+tabs.forEach((t, i) => {
+  t.onclick = () => showTab(t);
+  t.onkeydown = (e) => {
+    const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (d) { const next = tabs[(i + d + tabs.length) % tabs.length]; showTab(next); next.focus(); }
+  };
+});
 
 // sections rise once as they enter
 const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { threshold: 0.15 });

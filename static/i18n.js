@@ -60,8 +60,27 @@ const I18N = {
     "pf.f4": "<b>Кожен номер PayPal у реєстрі є справжньою транзакцією в пісочниці,</b> яку можна перевірити, а код відкритий на GitHub.",
     "pf.note": "Усі події є в <a href='/ledger'>публічному реєстрі</a>, а <a href='https://github.com/V1zual/proof-of-good' target='_blank' rel='noopener'>код</a> відкритий.",
     "fq.eyebrow": "Питання", "fq.h2": "Питання, які донори ставлять першими.",
+    "sc.eyebrow": "Як це виглядає", "sc.h2": "Кожен екран з одного справжнього прогону в пісочниці PayPal.",
+    "sc.t1": "Сторінка збору", "sc.t2": "Кабінет волонтера", "sc.t3": "Перевірка фото ШІ", "sc.t4": "Заморожена картка", "sc.t5": "Публічний реєстр", "sc.t6": "Сторінка донора",
+    "sc.c1": "Донори бачать, скільки зібрано, яка стаття бюджету на картці, і кожен платіж карткою з перевіркою ШІ поруч.",
+    "sc.c2": "Волонтер бачить залишок на картці для поточної статті бюджету й наступний крок: тут це надіслати фото.",
+    "sc.c3": "Кожне фото й чек проходять перевірки. Цю картинку з магазину відхилено, а причини показано донорам.",
+    "sc.c4": "Зняття готівки одразу заморозило картку. Більше гроші не виплачуються.",
+    "sc.c5": "Кожна пожертва, виплата, платіж карткою, вердикт і повернення в одній таблиці зі справжніми номерами PayPal.",
+    "sc.c6": "Кожен донор отримує посилання, яке показує, де зараз кожен його долар: на картці, витрачений і підтверджений або повернутий.",
+    "fl.h3": "Простежте $12 від донора до пляшки води",
+    "fl.1b": "$12 пожертвувано", "fl.1s": "Оплачено через PayPal і зберігається там. Ні в кого цих грошей ще немає.",
+    "fl.2b": "$10 надіслано на картку", "fl.2s": "Перша стаття бюджету, вода для укриття, йде волонтеру.",
+    "fl.3b": "−₴440 у супермаркеті", "fl.3s": "Банк повідомляє про платіж, а ШІ приблизно за 10 секунд звіряє його з водою.",
+    "fl.4b": "Фото води", "fl.4s": "Зроблене на місці. Воно підтверджує статтю й відкриває наступну.",
+    "fl.5b": "$2 ще зберігаються", "fl.5s": "Вони чекають на наступну статтю або повертаються донору.",
+    "fl.branch": "<b>Якщо карткою заплатять за щось інше,</b> наприклад зніматимуть готівку, переказуватимуть гроші чи гратимуть в азартні ігри, вона одразу заморожується, а $2, що ще зберігаються, повертаються донору через PayPal Refunds.",
     "fn.h2": "Подивіться весь шлях з тестовими грошима, від пожертви до повернення.",
-    "fn.lead": "Пожертвуйте $10 від тестового покупця, указаного на сторінці, оплатіть тестовою карткою, надішліть фото, а потім спробуйте схитрувати. Реєстрація не потрібна.",
+    "fn.s1": "Відкрийте <a href='/c/try'>тестовий збір</a> і пожертвуйте $10 від тестового покупця, указаного на сторінці.",
+    "fn.s2": "Відкрийте <a href='/volunteer?code=TRY-IT'>кабінет волонтера</a> з кодом TRY-IT і оплатіть тестовою карткою в супермаркеті.",
+    "fn.s3": "Надішліть фото будь-якої пляшки води й подивіться, як ШІ його перевіряє.",
+    "fn.s4": "Натисніть кнопку банкомата й подивіться, як картка заморожується, а гроші повертаються.",
+    "fn.lead": "Реєстрація не потрібна. Усе працює в пісочниці PayPal з тестовими грошима.",
     "fn.guarantee": "Якщо гроші використають не за призначенням або доказ так і не надійде, кожному донору автоматично повернеться його частка, що ще зберігається, через PayPal Refunds.",
     "ft.built": "Proof of Good · створено для PayPal AI Hackathon 2026",
     // ---- 404, privacy, terms ----
@@ -148,6 +167,11 @@ const I18N = {
     "left of {amount} for «{title}»": "залишилось з {amount} на «{title}»", "no budget line on the card": "на картці немає статті бюджету",
     "Frozen:": "Заморожено:", "Make the demo card pay. The bank feed reports it like a real card would:": "Оплатіть тестовою карткою. Виписка покаже це так само, як для справжньої картки:",
     "Every budget line is spent and proven.": "Усі статті бюджету витрачено й підтверджено.",
+    "What to do now": "Що робити зараз", "Money arrives": "Гроші надходять", "Pay with the card": "Платіть карткою", "Send a photo": "Надішліть фото",
+    "The next budget line reaches your card as soon as donors fund it.": "Наступна стаття бюджету надійде на вашу картку, щойно донори її зберуть.",
+    "Buy only what the budget line is for. Every payment is checked.": "Купуйте лише те, на що призначена стаття бюджету. Кожен платіж перевіряється.",
+    "A photo of the purchase in place unlocks the next line.": "Фото покупки на місці відкриває наступну статтю.",
+    "not funded yet": "ще не зібрано", "being spent now": "зараз витрачається", "payments matched, photo accepted": "платежі збіглися, фото прийнято",
     "The next budget line reaches the card when {amount} is donated. {a}Donate on the public page{z}.": "Наступна стаття бюджету надійде на картку, коли буде зібрано {amount}. {a}Пожертвувати на публічній сторінці{z}.",
     "Volunteer {name} · {a}public page{z} · {b}switch campaign{z}": "Волонтер {name} · {a}публічна сторінка{z} · {b}змінити збір{z}",
     "Your campaign card": "Картка вашого збору", "Prove the budget line": "Підтвердіть статтю бюджету",
@@ -198,7 +222,7 @@ const I18N = {
     "No events match. Clear the search or pick all events.": "Нічого не знайдено. Очистіть пошук або оберіть усі події.",
     "{n} events · donated {d} · released {r} · refunded {f}": "Подій: {n} · пожертвувано {d} · виплачено {r} · повернуто {f}",
     "Proof photo": "Фото доказу",
-    "kind.donation": "пожертва", "kind.release": "виплата", "kind.card": "картка", "kind.flag": "заморожування", "kind.proof": "доказ",
+    "kind.donation": "пожертва", "kind.release": "виплата", "kind.card": "картка", "kind.flag": "заморожено", "kind.proof": "доказ",
     "kind.verdict": "вердикт", "kind.refund": "повернення", "kind.note": "нотатка",
     "No test donations since the last restart": "Після останнього перезапуску тестових пожертв ще не було",
     "The demo server starts clean after every update. Make the first donation and the counters for money donated, released, checked and refunded fill in within seconds.": "Демосервер стартує з чистого аркуша після кожного оновлення. Зробіть першу пожертву, і лічильники пожертвуваних, виплачених, перевірених і повернутих грошей заповняться за кілька секунд.",
@@ -277,12 +301,21 @@ const TR_KEY = "tr:" + LANG;
 const TR = (() => { try { return JSON.parse(localStorage.getItem(TR_KEY) || "{}"); } catch (e) { return {}; } })();
 const trTried = {};
 const _e = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// server texts built from a template (card labels, audit check names): translated by pattern, no model needed
+const PATTERNS = LANG === "uk" ? [
+  [/^Demo card\b/, "Тестова картка"], [/^card: /, "картка: "], [/^receipt explains «(.+)»$/, "чек пояснює «$1»"],
+  [/^(photo|receipt): (unique file|not reused|taken after the money was released|capture date|not edited|content credentials)$/,
+    (m, what, check) => `${what === "photo" ? "фото" : "чек"}: ${{ "unique file": "унікальний файл", "not reused": "не використаний раніше",
+      "taken after the money was released": "зроблений після виплати", "capture date": "дата зйомки", "not edited": "без редагування",
+      "content credentials": "мітки походження C2PA" }[check]}`],
+] : [];
+const byPattern = (s) => { for (const [re, to] of PATTERNS) if (re.test(s)) return s.replace(re, to); return null; };
 // as text: the known translation, else the English original
-const tr = (s) => { s = String(s ?? ""); return LANG === "en" ? s : DICT[s] ?? TR[s] ?? s.replace(/^Demo card\b/, DICT["Demo card"] || "Demo card"); };
+const tr = (s) => { s = String(s ?? ""); return LANG === "en" ? s : DICT[s] ?? TR[s] ?? byPattern(s) ?? s; };
 // as HTML: when the translation is not known yet, a marked span that is filled in when it arrives
 const dyn = (s) => {
   s = String(s ?? "");
-  if (LANG === "en" || !s.trim() || DICT[s] != null || TR[s] != null || /^Demo card\b/.test(s)) return _e(tr(s));
+  if (LANG === "en" || !s.trim() || DICT[s] != null || TR[s] != null || byPattern(s) != null) return _e(tr(s));
   return `<span data-tr="${_e(s)}">${_e(s)}</span>`;
 };
 async function translateTexts(texts) {

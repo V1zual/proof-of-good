@@ -46,7 +46,8 @@ async function render() {
     <div>
       <div class="card" id="c-bar">${barCard(c)}</div>
       <div class="card"><h3>${L("Where the money goes")}</h3><p class="small muted mt-4 mb-16">${L("One budget line at a time goes to the card. The next one comes only after the last one is spent on the purpose and proven with a photo.")}</p>
-        <ol class="timeline" id="c-tranches">${c.tranches.map(trancheHtml).join("")}</ol></div>
+        <ol class="timeline" id="c-tranches">${c.tranches.map(trancheHtml).join("")}</ol>
+        <div class="states">${[["waiting", "not funded yet"], ["released", "being spent now"], ["accounted", "payments matched, photo accepted"]].map(([s, text]) => `<span>${badge(s)} ${L(text)}</span>`).join("")}</div></div>
       <div class="card" id="c-card">${cardCard(c)}</div>
       <div class="card" id="c-ledger">${ledgerCard(c)}</div>
     </div>

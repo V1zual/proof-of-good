@@ -243,6 +243,24 @@ TR_SCHEMA = {"type": "OBJECT", "properties": {"items": {"type": "ARRAY", "items"
              "required": ["items"]}
 
 
+async def _translate_chunk(lang: str, strings: list[str]) -> list[str] | None:
+    """One Gemini call for up to 20 strings; None when it fails or the answer does not line up with the input."""
+    prompt = (f"Translate each English string into {LANG_NAMES[lang]} for a donation transparency website: "
+              "volunteers spend donations from a transparent bank card and an AI auditor checks every payment "
+              "and photo. Use the polite form of address. Keep unchanged: numbers, amounts with $ or ₴, ids, "
+              "codes, emoji, «» quotes, shop names and people's names. Answer {\"items\": [...]} with exactly "
+              "one translation per input string, in the same order.\n\n" + json.dumps(strings, ensure_ascii=False))
+    try:
+        out = (await audit._generate([{"text": prompt}], TR_SCHEMA)).get("items") or []
+    except Exception:
+        log.exception("translate")
+        return None
+    if len(out) != len(strings):
+        log.warning("translate: %d strings in, %d out", len(strings), len(out))
+        return None
+    return [str(x) for x in out]
+
+
 @app.post("/api/translate")
 async def api_translate(body: dict):
     """Server texts the page shows (ledger lines, AI verdicts, bank categories) for the Ukrainian site.
@@ -256,23 +274,15 @@ async def api_translate(body: dict):
         missing = [s for s in texts if (lang, s) not in TRANSLATED]
         now = time.time()
         _tr_calls[:] = [c for c in _tr_calls if now - c < 60]
-        if missing and len(_tr_calls) < 20:
-            _tr_calls.append(now)
-            prompt = (f"Translate each English string into {LANG_NAMES[lang]} for a donation transparency website: "
-                      "volunteers spend donations from a transparent bank card and an AI auditor checks every payment "
-                      "and photo. Use the polite form of address. Keep unchanged: numbers, amounts with $ or ₴, ids, "
-                      "codes, emoji, «» quotes, shop names and people's names. Answer {\"items\": [...]} with exactly "
-                      "one translation per input string, in the same order.\n\n" + json.dumps(missing, ensure_ascii=False))
-            try:
-                out = (await audit._generate([{"text": prompt}], TR_SCHEMA)).get("items") or []
-                if len(out) == len(missing):
-                    if len(TRANSLATED) > 20000:
-                        TRANSLATED.clear()
-                    TRANSLATED.update({(lang, src): str(dst) for src, dst in zip(missing, out)})
-                else:
-                    log.warning("translate: %d strings in, %d out", len(missing), len(out))
-            except Exception:
-                log.exception("translate")
+        # small batches side by side: each answers in a few seconds and lines up with its input more reliably
+        chunks = [missing[i:i + 20] for i in range(0, len(missing), 20)][:max(0, 20 - len(_tr_calls))]
+        _tr_calls.extend([now] * len(chunks))
+        results = await asyncio.gather(*(_translate_chunk(lang, chunk) for chunk in chunks))
+        if len(TRANSLATED) > 20000:
+            TRANSLATED.clear()
+        for chunk, out in zip(chunks, results):
+            if out:
+                TRANSLATED.update({(lang, src): dst for src, dst in zip(chunk, out)})
     return {s: TRANSLATED[(lang, s)] for s in texts if (lang, s) in TRANSLATED}
 
 
